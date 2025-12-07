@@ -1,0 +1,7 @@
+{
+  "name": "DuelDisk Scanner",
+  "description": "A mobile-first web app to scan Yu-Gi-Oh! cards using AI, manage a collection (Armário), and build decks.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
