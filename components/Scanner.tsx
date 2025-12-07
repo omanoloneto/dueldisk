@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { identifyCard } from '../services/geminiService';
 import { CardData, Language } from '../types';
-import { Camera, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Camera, RefreshCw, CheckCircle, AlertTriangle, ScanLine } from 'lucide-react';
 import { translations } from '../utils/i18n';
 
 interface ScannerProps {
@@ -66,14 +66,26 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 relative min-h-[300px]">
-        <div className="h-full w-full bg-m3-surfaceContainer rounded-xl border border-m3-outline/20 overflow-hidden relative shadow-inner flex flex-col items-center justify-center">
+        <div className="h-full w-full bg-black/90 rounded-2xl border border-m3-outline/20 overflow-hidden relative shadow-inner flex flex-col items-center justify-center group">
             {image ? (
-            <img src={image} alt="Captured" className="w-full h-full object-contain" />
+                <img src={image} alt="Captured" className="w-full h-full object-contain" />
             ) : (
-            <div onClick={triggerCamera} className="cursor-pointer flex flex-col items-center text-m3-onSurfaceVariant/50 hover:text-m3-primary transition-colors">
-                <Camera size={48} strokeWidth={1.5} />
-                <span className="mt-4 font-medium text-sm">{t.scanner_instruction}</span>
-            </div>
+                <div onClick={triggerCamera} className="cursor-pointer w-full h-full flex flex-col items-center justify-center text-m3-onSurfaceVariant/70 hover:text-m3-primary transition-colors relative">
+                    {/* Reticle Guide Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-[65%] aspect-[2/3] border-2 border-dashed border-white/50 rounded-lg flex items-center justify-center">
+                            <div className="w-full h-[1px] bg-white/20 absolute"></div>
+                            <div className="h-full w-[1px] bg-white/20 absolute"></div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-m3-surfaceContainer/50 p-6 rounded-full backdrop-blur-sm z-10 group-hover:scale-110 transition-transform">
+                        <Camera size={40} strokeWidth={1.5} />
+                    </div>
+                    <span className="mt-6 font-medium text-sm px-4 py-1 bg-black/50 rounded-full backdrop-blur-md border border-white/10 z-10">
+                        {t.scanner_instruction}
+                    </span>
+                </div>
             )}
             
             <input
@@ -87,18 +99,18 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
         </div>
 
         {error && (
-            <div className="absolute bottom-4 left-4 right-4 bg-m3-error text-m3-onError p-3 rounded-xl flex items-center gap-3 shadow-lg text-sm">
+            <div className="absolute bottom-4 left-4 right-4 bg-m3-error text-m3-onError p-3 rounded-xl flex items-center gap-3 shadow-lg text-sm animate-in slide-in-from-bottom">
             <AlertTriangle size={20} />
             <span className="font-medium">{error}</span>
             </div>
         )}
       </div>
 
-      <div className="flex gap-4 mt-4">
+      <div className="flex gap-4 mt-4 shrink-0">
         {image && !isScanning && (
             <button 
                 onClick={() => setImage(null)}
-                className="flex-1 py-3 px-6 rounded-full bg-m3-surfaceContainerHigh text-m3-primary font-medium transition-all"
+                className="flex-1 py-3 px-6 rounded-xl bg-m3-surfaceContainerHigh text-m3-primary font-medium transition-all hover:bg-m3-secondaryContainer"
             >
                 {t.deck_cancel}
             </button>
@@ -108,10 +120,10 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
           <button
             onClick={processImage}
             disabled={isScanning}
-            className={`flex-1 py-3 px-6 rounded-full font-medium flex items-center justify-center gap-2 transition-all shadow-md ${
+            className={`flex-1 py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md ${
               isScanning 
                 ? 'bg-m3-surfaceContainer text-m3-onSurfaceVariant cursor-not-allowed' 
-                : 'bg-m3-primaryContainer text-m3-onPrimaryContainer'
+                : 'bg-m3-primaryContainer text-m3-onPrimaryContainer hover:brightness-110'
             }`}
           >
             {isScanning ? (
@@ -129,7 +141,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
         ) : (
             <button
             onClick={triggerCamera}
-            className="w-full py-4 rounded-xl font-medium text-lg bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-lg flex items-center justify-center gap-3"
+            className="w-full py-4 rounded-xl font-bold text-lg bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-lg flex items-center justify-center gap-3 hover:brightness-110 transition-all active:scale-95"
           >
             <Camera size={24} />
             {t.add_scan}

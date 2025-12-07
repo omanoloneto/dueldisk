@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Deck, CardData, AppView, Language, CardType } from '../types';
 import { Collection } from './Collection';
 import { translations } from '../utils/i18n';
-import { Plus, Trash, ArrowLeft, Layers, X, Wand2, Loader2, Check, AlertTriangle, Box, ChevronRight, Ghost, NotebookPen } from 'lucide-react';
+import { Plus, Trash, ArrowLeft, Layers, X, Wand2, Loader2, Check, AlertTriangle, Box, ChevronRight, Ghost, NotebookPen, ShieldAlert } from 'lucide-react';
 import { generateDeck, searchCardByName } from '../services/geminiService';
 
 interface DeckBuilderProps {
@@ -105,8 +105,6 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     // Check Owned Limits (if it's an owned card)
     if (card.isOwned) {
         const ownedQty = card.quantity || 1;
-        // Count how many copies of this ID are already in the deck (across all sections? usually limit is per deck, but ownership is global)
-        // Usually in YGO you can have 3 copies. But here we are checking against "Amount Owned".
         
         const inMain = activeDeck.cards.filter(id => id === card.id).length;
         const inExtra = (activeDeck.extraDeck || []).filter(id => id === card.id).length;
@@ -135,7 +133,6 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     }
 
     onUpdateDeck(updatedDeck);
-    // Don't close selector, user might want to add more copies
   };
 
   // AI Logic
@@ -216,9 +213,13 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       return { monsters, spells, traps };
   };
 
+  // Helper validation
+  const isDeckValid = (count: number) => count >= 40 && count <= 60;
+
   // --- View: List of Decks ---
   if (!activeDeckId) {
     if (showAiWizard) {
+        // ... (AI Wizard Code remains same)
         const canUseOwnedMode = allCards.length >= 40;
 
         return (
@@ -342,7 +343,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         </div>
 
         {isCreating && (
-          <div className="mb-6 bg-m3-surfaceContainer p-4 rounded-xl animate-in fade-in slide-in-from-top-4 shrink-0">
+          <div className="mb-6 bg-m3-surfaceContainer p-4 rounded-xl animate-in fade-in slide-in-from-top-4 shrink-0 shadow-lg border border-white/5">
             <h3 className="text-m3-onSurface font-medium mb-3">{t.deck_new}</h3>
             <form onSubmit={handleCreateSubmit} className="flex flex-col gap-3">
               <input 
@@ -364,46 +365,59 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         <div className="flex-1 overflow-y-auto pb-20 min-h-0">
             <div className="grid grid-cols-2 gap-4">
                 {decks.length === 0 && !isCreating && (
-                    <p className="col-span-2 text-center text-m3-onSurfaceVariant mt-10">{t.deck_empty}</p>
-                )}
-                {decks.map(deck => (
-                    <div 
-                    key={deck.id} 
-                    onClick={() => setActiveDeckId(deck.id)}
-                    className="bg-m3-surfaceContainerLow rounded-xl overflow-hidden cursor-pointer group active:scale-95 transition-all shadow-md relative aspect-[3/4] flex flex-col"
-                    >
-                    <div className="flex-1 bg-gradient-to-br from-m3-surfaceContainerHigh to-m3-surfaceContainer relative">
-                        {(() => {
-                                const firstCard = allCards.find(c => c.id === deck.cards[0]);
-                                return firstCard?.imageUrl ? (
-                                    <>
-                                        <img src={firstCard.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                                    </>
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center opacity-20"><Box size={48} /></div>
-                                );
-                        })()}
-                        
-                        <div className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-md">
-                            {deck.cards.length}
-                        </div>
+                    <div className="col-span-2 text-center text-m3-onSurfaceVariant mt-20 flex flex-col items-center opacity-50">
+                        <Layers size={48} className="mb-2" />
+                        <p>{t.deck_empty}</p>
                     </div>
+                )}
+                {decks.map(deck => {
+                    const valid = isDeckValid(deck.cards.length);
+                    const deckCardsObj = getCardObjects(deck.cards);
+                    const stats = getDeckStats(deckCardsObj);
 
-                    <div className="p-3 bg-m3-surfaceContainer">
-                        <h3 className="font-bold text-sm text-m3-onSurface truncate">{deck.name}</h3>
-                        <div className="flex justify-between items-center mt-1">
-                            <span className="text-[10px] text-m3-onSurfaceVariant uppercase tracking-wider">Deck Box</span>
+                    return (
+                        <div 
+                        key={deck.id} 
+                        onClick={() => setActiveDeckId(deck.id)}
+                        className="bg-m3-surfaceContainerLow rounded-xl overflow-hidden cursor-pointer group active:scale-95 transition-all shadow-md relative aspect-[3/4] flex flex-col border border-m3-outline/5 hover:border-m3-primary/30"
+                        >
+                        <div className="flex-1 bg-gradient-to-br from-m3-surfaceContainerHigh to-m3-surfaceContainer relative">
+                            {(() => {
+                                    const firstCard = allCards.find(c => c.id === deck.cards[0]);
+                                    return firstCard?.imageUrl ? (
+                                        <>
+                                            <img src={firstCard.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+                                        </>
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center opacity-20"><Box size={48} /></div>
+                                    );
+                            })()}
+                            
+                            <div className={`absolute top-2 right-2 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 font-bold ${valid ? 'bg-green-600/80' : 'bg-red-600/80'}`}>
+                                {valid ? <Check size={10} /> : <ShieldAlert size={10} />}
+                                {deck.cards.length}
+                            </div>
+                        </div>
+
+                        <div className="p-3 bg-m3-surfaceContainer">
+                            <h3 className="font-bold text-sm text-m3-onSurface truncate">{deck.name}</h3>
+                            <div className="flex gap-1.5 mt-1.5 text-[9px] text-m3-onSurfaceVariant font-mono">
+                                <span className="bg-yugi-monster/20 text-yugi-monster px-1 rounded">M:{stats.monsters}</span>
+                                <span className="bg-yugi-spell/20 text-yugi-spell px-1 rounded">S:{stats.spells}</span>
+                                <span className="bg-yugi-trap/20 text-yugi-trap px-1 rounded">T:{stats.traps}</span>
+                            </div>
+                            
                             <button 
                                 onClick={(e) => { e.stopPropagation(); onDeleteDeck(deck.id); }}
-                                className="text-m3-onSurfaceVariant hover:text-m3-error"
+                                className="absolute bottom-2 right-2 text-m3-onSurfaceVariant/50 hover:text-m3-error transition-colors p-1"
                             >
-                                <Trash size={16} />
+                                <Trash size={14} />
                             </button>
                         </div>
-                    </div>
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
             </div>
         </div>
       </div>
@@ -416,7 +430,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       <div className="fixed inset-0 z-[60] bg-m3-background flex flex-col animate-in slide-in-from-bottom duration-200">
           <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainer shrink-0">
               <h3 className="font-bold text-m3-onSurface text-lg">{t.col_add_title} ({activeTab})</h3>
-              <button onClick={() => setShowCardSelector(false)} className="p-2 text-m3-onSurfaceVariant"><X /></button>
+              <button onClick={() => setShowCardSelector(false)} className="p-2 text-m3-onSurfaceVariant hover:bg-m3-surfaceContainerHigh rounded-full"><X /></button>
           </div>
           <div className="flex-1 overflow-hidden min-h-0 safe-pb">
              <Collection 
@@ -439,50 +453,56 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   const currentDisplayCards = activeTab === 'MAIN' ? activeDeckMain : (activeTab === 'EXTRA' ? activeDeckExtra : activeDeckSide);
   const stats = getDeckStats(activeDeckMain);
+  const isValid = isDeckValid(activeDeckMain.length);
 
   return (
     <div className="flex flex-col h-full bg-m3-background">
       {/* Sticky Header with Stats */}
-      <div className="bg-m3-surfaceContainer shadow-sm sticky top-0 z-10 shrink-0">
+      <div className="bg-m3-surfaceContainer shadow-md sticky top-0 z-10 shrink-0 border-b border-white/5">
           <div className="px-4 py-3 flex items-center gap-3">
-            <button onClick={() => { setActiveDeckId(null); setActiveTab('MAIN'); }} className="text-m3-onSurface p-1 rounded-full hover:bg-black/10">
+            <button onClick={() => { setActiveDeckId(null); setActiveTab('MAIN'); }} className="text-m3-onSurface p-2 -ml-2 rounded-full hover:bg-m3-surfaceContainerHigh transition-colors">
                 <ArrowLeft size={24} />
             </button>
             <div className="flex-1 min-w-0">
-                <h2 className="font-bold text-lg text-m3-onSurface truncate leading-tight">{activeDeck.name}</h2>
-                <div className="flex gap-3 text-xs font-medium text-m3-onSurfaceVariant mt-0.5">
+                <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-lg text-m3-onSurface truncate leading-tight">{activeDeck.name}</h2>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${isValid ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                        {isValid ? 'Valid' : 'Invalid'}
+                    </span>
+                </div>
+                <div className="flex gap-3 text-xs font-medium text-m3-onSurfaceVariant mt-0.5 opacity-80">
                     <span className="text-yugi-monster font-bold">{stats.monsters} Mon</span>
                     <span className="text-yugi-spell font-bold">{stats.spells} Spell</span>
                     <span className="text-yugi-trap font-bold">{stats.traps} Trap</span>
                 </div>
             </div>
             
-            {/* Notes Button (Replaces Check) */}
+            {/* Notes Button */}
             <button 
                 onClick={() => setShowNotesModal(true)}
-                className="bg-m3-secondaryContainer text-m3-onSecondaryContainer p-2 rounded-full shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                className="bg-m3-secondaryContainer text-m3-onSecondaryContainer p-2.5 rounded-full shadow-sm hover:brightness-110 active:scale-95 transition-all"
             >
                 <NotebookPen size={20} />
             </button>
           </div>
 
           {/* Material 3 Tabs */}
-          <div className="flex flex-row w-full border-b border-m3-outline/20">
+          <div className="flex flex-row w-full">
               <button 
                 onClick={() => setActiveTab('MAIN')}
-                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'MAIN' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface'}`}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'MAIN' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface hover:bg-m3-surfaceContainerHigh'}`}
               >
                   Main ({activeDeckMain.length})
               </button>
               <button 
                 onClick={() => setActiveTab('EXTRA')}
-                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'EXTRA' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface'}`}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'EXTRA' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface hover:bg-m3-surfaceContainerHigh'}`}
               >
                   Extra ({activeDeckExtra.length})
               </button>
               <button 
                 onClick={() => setActiveTab('SIDE')}
-                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'SIDE' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface'}`}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'SIDE' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface hover:bg-m3-surfaceContainerHigh'}`}
               >
                   Side ({activeDeckSide.length})
               </button>
@@ -490,7 +510,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       </div>
 
       {/* Grid Content */}
-      <div className="flex-1 overflow-y-auto p-2 pb-24 min-h-0">
+      <div className="flex-1 overflow-y-auto p-2 pb-24 min-h-0 bg-m3-background">
         {currentDisplayCards.length === 0 ? (
            <div className="h-full flex flex-col items-center justify-center text-m3-onSurfaceVariant opacity-50 animate-in fade-in">
                <Layers size={48} className="mb-2" />
@@ -525,9 +545,9 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                         {/* Remove Button (Explicit, Top Right) */}
                         <button 
                             onClick={(e) => { e.stopPropagation(); removeCardFromDeck(index); }}
-                            className="absolute top-0 right-0 p-1.5 bg-red-600/80 text-white rounded-bl-lg hover:bg-red-700 z-20"
+                            className="absolute top-0 right-0 p-1.5 bg-red-600/90 text-white rounded-bl-lg hover:bg-red-700 z-20 backdrop-blur-md"
                         >
-                            <Trash size={14} />
+                            <Trash size={12} />
                         </button>
 
                         {/* Type Strip */}
@@ -553,7 +573,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       {/* Notes Modal */}
       {showNotesModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-             <div className="bg-m3-surfaceContainer w-full max-w-md rounded-2xl overflow-hidden flex flex-col max-h-[80vh] shadow-2xl animate-in zoom-in-95">
+             <div className="bg-m3-surfaceContainer w-full max-w-md rounded-2xl overflow-hidden flex flex-col max-h-[80vh] shadow-2xl animate-in zoom-in-95 border border-white/5">
                  <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainerHigh">
                      <h3 className="font-bold text-m3-onSurface flex items-center gap-2">
                          <NotebookPen size={18} /> {t.deck_notes_title}
@@ -567,7 +587,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                         value={notesContent}
                         onChange={(e) => setNotesContent(e.target.value)}
                         placeholder={t.deck_notes_placeholder}
-                        className="w-full h-64 bg-m3-surfaceContainerLow text-m3-onSurface p-4 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-m3-primary"
+                        className="w-full h-64 bg-m3-surfaceContainerLow text-m3-onSurface p-4 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-m3-primary border border-white/5"
                      />
                  </div>
                  <div className="p-4 border-t border-m3-outline/20 bg-m3-surfaceContainerHigh flex justify-end">

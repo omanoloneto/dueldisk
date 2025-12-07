@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, Delete, History } from 'lucide-react';
+import { RefreshCw, Delete, History, Dices, CircleDot } from 'lucide-react';
 import { Language } from '../types';
 import { translations } from '../utils/i18n';
 
@@ -11,14 +11,25 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
   const [lp, setLp] = useState(8000);
   const [inputValue, setInputValue] = useState('0');
   const [history, setHistory] = useState<number[]>([]);
+  const [toolResult, setToolResult] = useState<string | null>(null);
   const t = translations[lang];
+
+  const maxLp = 8000;
+  const lpPercentage = Math.min(100, Math.max(0, (lp / maxLp) * 100));
+  
+  // Health Bar Color
+  const getBarColor = () => {
+      if (lpPercentage > 50) return 'bg-yugi-spell'; // Greenish
+      if (lpPercentage > 25) return 'bg-yugi-monster'; // Yellow/Orange
+      return 'bg-yugi-trap'; // Red/Pink
+  };
 
   const triggerHaptic = () => {
       if (navigator.vibrate) navigator.vibrate(10);
   };
 
   const updateLP = (amount: number) => {
-    setHistory(prev => [amount, ...prev].slice(0, 3)); // Keep last 3
+    setHistory(prev => [amount, ...prev].slice(0, 5)); 
     setLp(prev => Math.max(0, prev + amount));
     setInputValue('0');
     triggerHaptic();
@@ -50,77 +61,119 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
 
   const reset = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Direct reset to ensure it works on all devices without blocking confirm dialogs
     setLp(8000);
     setInputValue('0');
     setHistory([]);
+    setToolResult(null);
     triggerHaptic();
   };
 
+  const rollDice = () => {
+      triggerHaptic();
+      const result = Math.floor(Math.random() * 6) + 1;
+      setToolResult(`🎲 ${result}`);
+      setTimeout(() => setToolResult(null), 3000);
+  };
+
+  const flipCoin = () => {
+      triggerHaptic();
+      const isHeads = Math.random() > 0.5;
+      setToolResult(isHeads ? '🪙 Heads' : '🪙 Tails');
+      setTimeout(() => setToolResult(null), 3000);
+  };
+
   return (
-    <div className="flex flex-col h-full bg-m3-background">
+    <div className="flex flex-col h-full bg-m3-background relative overflow-hidden">
+      
+      {/* Health Bar (Visual Indicator) */}
+      <div className="h-2 w-full bg-m3-surfaceContainerHigh">
+          <div 
+            className={`h-full transition-all duration-500 ease-out ${getBarColor()}`} 
+            style={{ width: `${lpPercentage}%` }}
+          />
+      </div>
+
       {/* LP Display Area */}
       <div className="flex-1 flex flex-col items-center justify-center relative bg-m3-surfaceContainerLow transition-colors duration-300">
           
-          {/* History Log (Floating) */}
-          <div className="absolute top-4 left-6 flex flex-col gap-1 items-start opacity-60 pointer-events-none z-10">
-             {history.map((val, i) => (
-                 <span key={i} className={`text-sm font-bold ${val > 0 ? 'text-m3-primary' : 'text-m3-error'}`}>
-                     {val > 0 ? '+' : ''}{val}
-                 </span>
-             ))}
-          </div>
+          {/* Top Tools Bar */}
+          <div className="absolute top-4 left-0 right-0 px-6 flex justify-between items-start z-50">
+               {/* History Log */}
+               <div className="flex flex-col gap-1 items-start opacity-70">
+                    {history.map((val, i) => (
+                        <span key={i} className={`text-sm font-bold tabular-nums animate-in slide-in-from-left fade-in ${val > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {val > 0 ? '+' : ''}{val}
+                        </span>
+                    ))}
+               </div>
 
-          <button 
-            onClick={reset} 
-            aria-label={t.lp_reset}
-            className="absolute top-4 right-4 p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-error transition-all active:scale-90 z-50 cursor-pointer shadow-sm border border-white/5"
-          >
-             <RefreshCw size={20} />
-          </button>
+               {/* Tools & Reset */}
+               <div className="flex gap-2">
+                   <button onClick={rollDice} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all border border-white/5">
+                       <Dices size={20} />
+                   </button>
+                   <button onClick={flipCoin} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all border border-white/5">
+                       <CircleDot size={20} />
+                   </button>
+                   <button 
+                        onClick={reset} 
+                        aria-label={t.lp_reset}
+                        className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-error hover:bg-m3-surfaceContainer active:scale-90 transition-all border border-white/5"
+                    >
+                        <RefreshCw size={20} />
+                    </button>
+               </div>
+          </div>
           
-          <div className="flex flex-col items-center z-10">
-            <span className="text-m3-onSurfaceVariant text-xs font-bold tracking-[0.2em] uppercase mb-2">Life Points</span>
-            <h1 className={`font-bold text-m3-onSurface tabular-nums leading-none tracking-tighter transition-all duration-300 ${inputValue !== '0' ? 'opacity-30 scale-90' : 'opacity-100 scale-100'}`} style={{ fontSize: 'min(20vw, 7rem)' }}>
+          <div className="flex flex-col items-center z-10 select-none">
+            <span className="text-m3-onSurfaceVariant text-xs font-bold tracking-[0.3em] uppercase mb-4 opacity-50">Life Points</span>
+            <h1 className={`font-bold text-m3-onSurface tabular-nums leading-none tracking-tighter transition-all duration-300 drop-shadow-2xl ${inputValue !== '0' ? 'opacity-20 scale-90 blur-sm' : 'opacity-100 scale-100'}`} style={{ fontSize: 'min(22vw, 8rem)' }}>
                 {lp}
             </h1>
           </div>
 
+          {/* Tools Result Overlay */}
+          {toolResult && (
+              <div className="absolute top-1/4 z-40 bg-black/80 backdrop-blur-md px-8 py-4 rounded-2xl animate-in zoom-in fade-in duration-300 border border-white/10">
+                  <span className="text-4xl font-bold text-white">{toolResult}</span>
+              </div>
+          )}
+
           {/* Input Overlay Preview */}
           {inputValue !== '0' && (
               <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                  <span className="text-6xl font-bold text-m3-primary animate-in zoom-in-50 duration-200">{inputValue}</span>
+                  <span className="text-7xl font-bold text-m3-primary animate-in zoom-in-50 duration-200 drop-shadow-xl">{inputValue}</span>
               </div>
           )}
       </div>
 
       {/* Calculator Deck */}
-      <div className="bg-m3-surfaceContainerHigh rounded-t-[2rem] p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
+      <div className="bg-m3-surfaceContainerHigh rounded-t-[2.5rem] p-5 shadow-[0_-8px_30px_rgba(0,0,0,0.3)] z-30">
           
           {/* Action Bar - Quick Actions Defaults to Damage */}
-          <div className="grid grid-cols-4 gap-3 mb-3">
-               <button onClick={() => setLp(Math.ceil(lp / 2))} className="bg-m3-surfaceContainer text-m3-onSurfaceVariant rounded-xl font-bold text-sm py-3 shadow-sm active:scale-95 transition-transform">½</button>
-               <button onClick={() => updateLP(-1000)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3 text-m3-error shadow-sm active:scale-95 transition-transform">-1000</button>
-               <button onClick={() => updateLP(-500)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3 text-m3-error shadow-sm active:scale-95 transition-transform">-500</button>
-               <button onClick={() => updateLP(-100)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3 text-m3-error shadow-sm active:scale-95 transition-transform">-100</button>
+          <div className="grid grid-cols-4 gap-3 mb-4">
+               <button onClick={() => setLp(Math.ceil(lp / 2))} className="bg-m3-surfaceContainer text-m3-onSurfaceVariant rounded-2xl font-bold text-sm py-4 shadow-sm active:scale-95 transition-transform border border-white/5">½</button>
+               <button onClick={() => updateLP(-1000)} className="bg-m3-surfaceContainer text-red-400 rounded-2xl font-bold text-sm py-4 shadow-sm active:scale-95 transition-transform border border-white/5">-1000</button>
+               <button onClick={() => updateLP(-500)} className="bg-m3-surfaceContainer text-red-400 rounded-2xl font-bold text-sm py-4 shadow-sm active:scale-95 transition-transform border border-white/5">-500</button>
+               <button onClick={() => updateLP(-100)} className="bg-m3-surfaceContainer text-red-400 rounded-2xl font-bold text-sm py-4 shadow-sm active:scale-95 transition-transform border border-white/5">-100</button>
           </div>
 
           {/* Numpad Grid */}
-          <div className="grid grid-cols-4 gap-3 h-[45vh] max-h-[380px]">
+          <div className="grid grid-cols-4 gap-3 h-[42vh] max-h-[360px]">
               {/* Numbers */}
               <div className="col-span-3 grid grid-cols-3 gap-3">
                   {[7,8,9,4,5,6,1,2,3].map(num => (
                       <button 
                         key={num} 
                         onClick={() => handleNumPress(num)}
-                        className="bg-m3-background text-m3-onSurface text-3xl font-medium rounded-2xl shadow-sm hover:bg-m3-surfaceContainer active:scale-95 active:bg-m3-primaryContainer active:text-m3-onPrimaryContainer transition-all touch-manipulation"
+                        className="bg-m3-background text-m3-onSurface text-2xl font-medium rounded-2xl shadow-sm hover:bg-m3-surfaceContainer active:scale-95 active:bg-m3-primaryContainer active:text-m3-onPrimaryContainer transition-all touch-manipulation border border-white/5"
                       >
                           {num}
                       </button>
                   ))}
-                  <button onClick={() => handleNumPress(0)} className="col-span-1 bg-m3-background text-m3-onSurface text-3xl font-medium rounded-2xl shadow-sm hover:bg-m3-surfaceContainer active:scale-95 transition-all">0</button>
-                  <button onClick={() => handleNumPress(0)} className="col-span-1 bg-m3-background text-m3-onSurface text-3xl font-medium rounded-2xl shadow-sm hover:bg-m3-surfaceContainer active:scale-95 transition-all">00</button>
-                  <button onClick={handleBackspace} className="col-span-1 bg-m3-surfaceContainerLow text-m3-error text-xl font-medium rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center">
+                  <button onClick={() => handleNumPress(0)} className="col-span-1 bg-m3-background text-m3-onSurface text-2xl font-medium rounded-2xl shadow-sm hover:bg-m3-surfaceContainer active:scale-95 transition-all border border-white/5">0</button>
+                  <button onClick={() => handleNumPress(0)} className="col-span-1 bg-m3-background text-m3-onSurface text-2xl font-medium rounded-2xl shadow-sm hover:bg-m3-surfaceContainer active:scale-95 transition-all border border-white/5">00</button>
+                  <button onClick={handleBackspace} className="col-span-1 bg-m3-surfaceContainerLow text-m3-error text-xl font-medium rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center border border-white/5 hover:bg-m3-error/10">
                       <Delete />
                   </button>
               </div>
@@ -130,19 +183,17 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
                   {/* Heal (Top) */}
                   <button 
                     onClick={() => applyCustom(1)}
-                    className="flex-1 bg-m3-primary text-m3-onPrimary rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-md group"
+                    className="flex-1 bg-m3-primaryContainer text-m3-onPrimaryContainer rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-md group border border-white/10"
                   >
                       <span className="group-active:scale-125 transition-transform text-3xl mb-1">+</span>
-                      <span className="text-xs uppercase opacity-80">{t.lp_heal}</span>
                   </button>
 
                   {/* Damage (Bottom) */}
                   <button 
                     onClick={() => applyCustom(-1)}
-                    className="flex-1 bg-m3-error text-m3-onError rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-md group"
+                    className="flex-1 bg-m3-error/20 text-m3-error rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:bg-m3-error hover:text-m3-onError active:scale-95 transition-all shadow-md group border border-m3-error/20"
                   >
                       <span className="group-active:scale-125 transition-transform text-3xl mb-1">-</span>
-                      <span className="text-xs uppercase opacity-80">{t.lp_damage}</span>
                   </button>
               </div>
           </div>
