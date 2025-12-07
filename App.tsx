@@ -66,9 +66,31 @@ export default function App() {
 
   const handleAddCard = async (card: CardData) => {
     try {
-      await storageService.saveCard(card);
-      setCards(prev => [card, ...prev]);
-      showNotification(`${card.name} saved!`);
+      // Check if duplicate exists
+      const existingCardIndex = cards.findIndex(c => c.name.toLowerCase() === card.name.toLowerCase() && c.isOwned === true);
+
+      if (existingCardIndex >= 0) {
+          // Increment quantity
+          const existingCard = cards[existingCardIndex];
+          const updatedCard = { 
+              ...existingCard, 
+              quantity: (existingCard.quantity || 1) + 1,
+              // Update image if the new scan is better? For now keep old image to avoid jump
+          };
+          
+          await storageService.saveCard(updatedCard);
+          
+          const newCards = [...cards];
+          newCards[existingCardIndex] = updatedCard;
+          setCards(newCards);
+          showNotification(`${updatedCard.name} (+1) saved!`);
+      } else {
+          // Create new
+          const newCard = { ...card, quantity: 1 };
+          await storageService.saveCard(newCard);
+          setCards(prev => [newCard, ...prev]);
+          showNotification(`${newCard.name} saved!`);
+      }
     } catch (e) {
       showNotification("Erro ao salvar carta.");
     }
@@ -99,7 +121,7 @@ export default function App() {
     }
   };
 
-  const handleCreateDeck = async (name: string, mainCards: CardData[] = [], extraCards: CardData[] = [], sideCards: CardData[] = []) => {
+  const handleCreateDeck = async (name: string, mainCards: CardData[] = [], extraCards: CardData[] = [], sideCards: CardData[] = [], notes: string = '') => {
     try {
         // Collect all new cards from all sections
         const allNewCards = [...mainCards, ...extraCards, ...sideCards];
@@ -113,7 +135,8 @@ export default function App() {
 
             for (const card of allNewCards) {
                 if (!currentCardIds.has(card.id) && !processedIds.has(card.id)) {
-                    newCardsToSave.push(card);
+                    // For AI generated cards, ensure quantity is 1
+                    newCardsToSave.push({...card, quantity: 1});
                     processedIds.add(card.id);
                 }
             }
@@ -130,6 +153,7 @@ export default function App() {
             cards: mainCards.map(c => c.id),
             extraDeck: extraCards.map(c => c.id),
             sideDeck: sideCards.map(c => c.id),
+            notes: notes,
             createdAt: Date.now()
         };
 
@@ -211,6 +235,7 @@ export default function App() {
             onUpdateDeck={handleUpdateDeck}
             onDeleteDeck={handleDeleteDeck}
             onChangeView={setView}
+            onViewCard={setSelectedCard}
             lang={lang}
           />
         )}

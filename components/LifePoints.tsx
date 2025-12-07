@@ -48,12 +48,13 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
       }
   };
 
-  const reset = () => {
-    if (confirm(t.lp_reset + "?")) {
-      setLp(8000);
-      setInputValue('0');
-      setHistory([]);
-    }
+  const reset = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Direct reset to ensure it works on all devices without blocking confirm dialogs
+    setLp(8000);
+    setInputValue('0');
+    setHistory([]);
+    triggerHaptic();
   };
 
   return (
@@ -62,7 +63,7 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
       <div className="flex-1 flex flex-col items-center justify-center relative bg-m3-surfaceContainerLow transition-colors duration-300">
           
           {/* History Log (Floating) */}
-          <div className="absolute top-4 left-6 flex flex-col gap-1 items-start opacity-60">
+          <div className="absolute top-4 left-6 flex flex-col gap-1 items-start opacity-60 pointer-events-none z-10">
              {history.map((val, i) => (
                  <span key={i} className={`text-sm font-bold ${val > 0 ? 'text-m3-primary' : 'text-m3-error'}`}>
                      {val > 0 ? '+' : ''}{val}
@@ -70,7 +71,11 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
              ))}
           </div>
 
-          <button onClick={reset} className="absolute top-4 right-4 p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-error transition-all active:scale-90">
+          <button 
+            onClick={reset} 
+            aria-label={t.lp_reset}
+            className="absolute top-4 right-4 p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-error transition-all active:scale-90 z-50 cursor-pointer shadow-sm border border-white/5"
+          >
              <RefreshCw size={20} />
           </button>
           
@@ -92,12 +97,12 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
       {/* Calculator Deck */}
       <div className="bg-m3-surfaceContainerHigh rounded-t-[2rem] p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.2)]">
           
-          {/* Action Bar */}
+          {/* Action Bar - Quick Actions Defaults to Damage */}
           <div className="grid grid-cols-4 gap-3 mb-3">
-               <button onClick={() => setLp(Math.ceil(lp / 2))} className="bg-m3-surfaceContainer text-m3-onSurfaceVariant rounded-xl font-bold text-sm py-3">½</button>
-               <button onClick={() => updateLP(1000)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3">+1000</button>
-               <button onClick={() => updateLP(500)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3">+500</button>
-               <button onClick={() => updateLP(100)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3">+100</button>
+               <button onClick={() => setLp(Math.ceil(lp / 2))} className="bg-m3-surfaceContainer text-m3-onSurfaceVariant rounded-xl font-bold text-sm py-3 shadow-sm active:scale-95 transition-transform">½</button>
+               <button onClick={() => updateLP(-1000)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3 text-m3-error shadow-sm active:scale-95 transition-transform">-1000</button>
+               <button onClick={() => updateLP(-500)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3 text-m3-error shadow-sm active:scale-95 transition-transform">-500</button>
+               <button onClick={() => updateLP(-100)} className="bg-m3-surfaceContainer text-m3-onSurface rounded-xl font-bold text-sm py-3 text-m3-error shadow-sm active:scale-95 transition-transform">-100</button>
           </div>
 
           {/* Numpad Grid */}
@@ -120,21 +125,24 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
                   </button>
               </div>
 
-              {/* Operators */}
+              {/* Operators - Swapped Positions */}
               <div className="col-span-1 flex flex-col gap-3">
-                  <button 
-                    onClick={() => applyCustom(-1)}
-                    className="flex-1 bg-m3-error text-m3-onError rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-md group"
-                  >
-                      <span className="group-active:scale-125 transition-transform text-3xl mb-1">-</span>
-                      <span className="text-xs uppercase opacity-80">{t.lp_damage}</span>
-                  </button>
+                  {/* Heal (Top) */}
                   <button 
                     onClick={() => applyCustom(1)}
                     className="flex-1 bg-m3-primary text-m3-onPrimary rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-md group"
                   >
                       <span className="group-active:scale-125 transition-transform text-3xl mb-1">+</span>
                       <span className="text-xs uppercase opacity-80">{t.lp_heal}</span>
+                  </button>
+
+                  {/* Damage (Bottom) */}
+                  <button 
+                    onClick={() => applyCustom(-1)}
+                    className="flex-1 bg-m3-error text-m3-onError rounded-2xl text-lg font-bold flex flex-col items-center justify-center hover:brightness-110 active:scale-95 transition-all shadow-md group"
+                  >
+                      <span className="group-active:scale-125 transition-transform text-3xl mb-1">-</span>
+                      <span className="text-xs uppercase opacity-80">{t.lp_damage}</span>
                   </button>
               </div>
           </div>

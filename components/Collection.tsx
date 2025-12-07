@@ -95,7 +95,8 @@ export const Collection: React.FC<CollectionProps> = ({
           race: partialCard.race,
           imageUrl: partialCard.imageUrl,
           scanDate: Date.now(),
-          isOwned: true // Manual add is always owned
+          isOwned: true,
+          quantity: 1
       };
       onAddCard(newCard);
       // Close modal
@@ -178,6 +179,13 @@ export const Collection: React.FC<CollectionProps> = ({
                      card.type === CardType.TRAP ? 'bg-yugi-trap' : 'bg-gray-500'
                  }`} />
 
+                 {/* Quantity Badge */}
+                 {(card.quantity || 1) > 0 && (
+                     <div className="absolute bottom-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded-md border border-white/20 font-bold z-10">
+                         x{card.quantity || 1}
+                     </div>
+                 )}
+
                  {selectionMode && (
                       <div className="absolute inset-0 bg-m3-primary/20 opacity-0 group-hover:opacity-100 flex items-center justify-center">
                           <PlusCircle size={32} className="text-m3-onPrimaryContainer bg-m3-primaryContainer rounded-full" />
@@ -201,7 +209,7 @@ export const Collection: React.FC<CollectionProps> = ({
 
       {/* Add Card Modal */}
       {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
               <div className="bg-m3-surfaceContainer w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom">
                   {/* Header */}
                   <div className="p-4 border-b border-m3-outline/10 flex justify-between items-center">
@@ -211,7 +219,7 @@ export const Collection: React.FC<CollectionProps> = ({
                       </button>
                   </div>
                   
-                  <div className="flex-1 overflow-y-auto p-4">
+                  <div className="flex-1 overflow-y-auto p-4 safe-pb">
                       {/* Selection State */}
                       {addMethod === 'NONE' && (
                           <div className="grid gap-3">

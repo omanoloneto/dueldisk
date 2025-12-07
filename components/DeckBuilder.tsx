@@ -1,17 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Deck, CardData, AppView, Language, CardType } from '../types';
 import { Collection } from './Collection';
 import { translations } from '../utils/i18n';
-import { Plus, Trash, ArrowLeft, Layers, X, Wand2, Loader2, Check, AlertTriangle, Box, ChevronRight, Ghost } from 'lucide-react';
+import { Plus, Trash, ArrowLeft, Layers, X, Wand2, Loader2, Check, AlertTriangle, Box, ChevronRight, Ghost, NotebookPen } from 'lucide-react';
 import { generateDeck, searchCardByName } from '../services/geminiService';
 
 interface DeckBuilderProps {
   decks: Deck[];
   allCards: CardData[];
-  onCreateDeck: (name: string, mainCards: CardData[], extraCards?: CardData[], sideCards?: CardData[]) => void;
+  onCreateDeck: (name: string, mainCards: CardData[], extraCards?: CardData[], sideCards?: CardData[], notes?: string) => void;
   onUpdateDeck: (deck: Deck) => void;
   onDeleteDeck: (id: string) => void;
   onChangeView: (view: AppView) => void;
+  onViewCard: (card: CardData) => void;
   lang: Language;
 }
 
@@ -24,6 +25,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   onUpdateDeck,
   onDeleteDeck,
   onChangeView,
+  onViewCard,
   lang
 }) => {
   const t = translations[lang];
@@ -35,6 +37,10 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const [newDeckName, setNewDeckName] = useState('');
   const [showCardSelector, setShowCardSelector] = useState(false);
 
+  // Notes State
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [notesContent, setNotesContent] = useState('');
+
   // AI Wizard State
   const [showAiWizard, setShowAiWizard] = useState(false);
   const [aiStep, setAiStep] = useState<1 | 2 | 3>(1);
@@ -43,6 +49,13 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
 
   const activeDeck = decks.find(d => d.id === activeDeckId);
+
+  // Sync notes content when deck opens
+  useEffect(() => {
+    if (activeDeck) {
+      setNotesContent(activeDeck.notes || '');
+    }
+  }, [activeDeck]);
 
   const getCardObjects = (ids: string[] = []) => {
       return ids.map(id => allCards.find(c => c.id === id)).filter(Boolean) as CardData[];
@@ -55,6 +68,13 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       setNewDeckName('');
       setIsCreating(false);
     }
+  };
+
+  const saveNotes = () => {
+      if (activeDeck) {
+          onUpdateDeck({ ...activeDeck, notes: notesContent });
+          setShowNotesModal(false);
+      }
   };
 
   const removeCardFromDeck = (indexToRemove: number) => {
@@ -82,6 +102,23 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const addCardToDeck = (card: CardData) => {
     if (!activeDeck) return;
     
+    // Check Owned Limits (if it's an owned card)
+    if (card.isOwned) {
+        const ownedQty = card.quantity || 1;
+        // Count how many copies of this ID are already in the deck (across all sections? usually limit is per deck, but ownership is global)
+        // Usually in YGO you can have 3 copies. But here we are checking against "Amount Owned".
+        
+        const inMain = activeDeck.cards.filter(id => id === card.id).length;
+        const inExtra = (activeDeck.extraDeck || []).filter(id => id === card.id).length;
+        const inSide = (activeDeck.sideDeck || []).filter(id => id === card.id).length;
+        const totalUsed = inMain + inExtra + inSide;
+
+        if (totalUsed >= ownedQty) {
+            alert(`You only own ${ownedQty} cop${ownedQty > 1 ? 'ies' : 'y'} of ${card.name}.`);
+            return;
+        }
+    }
+
     let updatedDeck = { ...activeDeck };
     
     if (activeTab === 'MAIN') {
@@ -98,7 +135,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     }
 
     onUpdateDeck(updatedDeck);
-    setShowCardSelector(false);
+    // Don't close selector, user might want to add more copies
   };
 
   // AI Logic
@@ -118,7 +155,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           const coreNames = aiCoreCards.map(c => c.name);
           const collectionNames = allCards.map(c => c.name);
 
-          const result = await generateDeck(coreNames, aiMode, collectionNames);
+          // Pass 'lang' to get strategy guide in correct language
+          const result = await generateDeck(coreNames, aiMode, collectionNames, lang);
           
           let mainCards: CardData[] = [];
           let extraCards: CardData[] = [];
@@ -155,7 +193,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
               await processCardList(result.extraDeck, extraCards);
           }
           
-          onCreateDeck(result.deckName, mainCards, extraCards);
+          // Pass result.strategyGuide to onCreateDeck
+          onCreateDeck(result.deckName, mainCards, extraCards, [], result.strategyGuide);
           setShowAiWizard(false);
           setAiStep(1);
           setAiCoreCards([]);
@@ -374,12 +413,12 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   // --- View: Add Card Overlay ---
   if (showCardSelector) {
     return (
-      <div className="fixed inset-0 z-50 bg-m3-background flex flex-col animate-in slide-in-from-bottom duration-200">
+      <div className="fixed inset-0 z-[60] bg-m3-background flex flex-col animate-in slide-in-from-bottom duration-200">
           <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainer shrink-0">
               <h3 className="font-bold text-m3-onSurface text-lg">{t.col_add_title} ({activeTab})</h3>
               <button onClick={() => setShowCardSelector(false)} className="p-2 text-m3-onSurfaceVariant"><X /></button>
           </div>
-          <div className="flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 overflow-hidden min-h-0 safe-pb">
              <Collection 
                 cards={allCards} 
                 onDeleteCard={() => {}} 
@@ -417,11 +456,13 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                     <span className="text-yugi-trap font-bold">{stats.traps} Trap</span>
                 </div>
             </div>
+            
+            {/* Notes Button (Replaces Check) */}
             <button 
-                onClick={() => { setActiveDeckId(null); setActiveTab('MAIN'); }}
-                className="bg-m3-primary text-m3-onPrimary p-2 rounded-full shadow-sm hover:brightness-110 active:scale-95 transition-all"
+                onClick={() => setShowNotesModal(true)}
+                className="bg-m3-secondaryContainer text-m3-onSecondaryContainer p-2 rounded-full shadow-sm hover:brightness-110 active:scale-95 transition-all"
             >
-                <Check size={20} />
+                <NotebookPen size={20} />
             </button>
           </div>
 
@@ -464,7 +505,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                     <div 
                         key={`${card.id}-${index}-${activeTab}`} 
                         className="aspect-[2/3] relative rounded overflow-hidden group border border-m3-outline/20 shadow-sm bg-black"
-                        onClick={() => removeCardFromDeck(index)}
+                        onClick={() => onViewCard(card)}
                     >
                         {card.imageUrl ? (
                             <img src={card.imageUrl} className={`w-full h-full object-cover ${card.isOwned === false ? 'opacity-50 grayscale' : ''}`} />
@@ -481,10 +522,13 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                             </div>
                         )}
                         
-                        {/* Remove Overlay */}
-                        <div className="absolute inset-0 bg-red-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
-                            <Trash className="text-white" size={20} />
-                        </div>
+                        {/* Remove Button (Explicit, Top Right) */}
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); removeCardFromDeck(index); }}
+                            className="absolute top-0 right-0 p-1.5 bg-red-600/80 text-white rounded-bl-lg hover:bg-red-700 z-20"
+                        >
+                            <Trash size={14} />
+                        </button>
 
                         {/* Type Strip */}
                         <div className={`absolute bottom-0 inset-x-0 h-1 ${
@@ -505,6 +549,38 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       >
           <Plus size={32} />
       </button>
+
+      {/* Notes Modal */}
+      {showNotesModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+             <div className="bg-m3-surfaceContainer w-full max-w-md rounded-2xl overflow-hidden flex flex-col max-h-[80vh] shadow-2xl animate-in zoom-in-95">
+                 <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainerHigh">
+                     <h3 className="font-bold text-m3-onSurface flex items-center gap-2">
+                         <NotebookPen size={18} /> {t.deck_notes_title}
+                     </h3>
+                     <button onClick={() => setShowNotesModal(false)} className="p-2 text-m3-onSurfaceVariant hover:text-m3-onSurface">
+                         <X size={20} />
+                     </button>
+                 </div>
+                 <div className="flex-1 p-4">
+                     <textarea 
+                        value={notesContent}
+                        onChange={(e) => setNotesContent(e.target.value)}
+                        placeholder={t.deck_notes_placeholder}
+                        className="w-full h-64 bg-m3-surfaceContainerLow text-m3-onSurface p-4 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-m3-primary"
+                     />
+                 </div>
+                 <div className="p-4 border-t border-m3-outline/20 bg-m3-surfaceContainerHigh flex justify-end">
+                     <button 
+                        onClick={saveNotes}
+                        className="bg-m3-primary text-m3-onPrimary px-6 py-2 rounded-full font-bold shadow-md active:scale-95 transition-all"
+                     >
+                         {t.deck_notes_save}
+                     </button>
+                 </div>
+             </div>
+        </div>
+      )}
     </div>
   );
 };

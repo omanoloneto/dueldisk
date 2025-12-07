@@ -18,6 +18,7 @@ export interface CardData {
   imageUrl?: string; // Base64 or placeholder
   scanDate: number;
   isOwned?: boolean; // Defaults to true if undefined. False means it's a proxy/wishlist item.
+  quantity?: number; // Quantity owned. Defaults to 1.
 }
 
 export interface Deck {
@@ -26,6 +27,7 @@ export interface Deck {
   cards: string[]; // Main Deck IDs
   extraDeck?: string[]; // Extra Deck IDs
   sideDeck?: string[]; // Side Deck IDs
+  notes?: string; // Strategy guide or user notes
   createdAt: number;
 }
 

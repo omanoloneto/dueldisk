@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { CardType, CardData } from "../types";
+import { CardType, CardData, Language } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -27,9 +27,10 @@ const deckSchema: Schema = {
     properties: {
         deckName: { type: Type.STRING, description: "A creative name for the deck" },
         mainDeck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of card names for the Main Deck (40-60 cards)" },
-        extraDeck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of card names for the Extra Deck (0-15 cards)" }
+        extraDeck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of card names for the Extra Deck (0-15 cards)" },
+        strategyGuide: { type: Type.STRING, description: "A concise guide on how to play the deck, key combos, and win conditions. MUST BE IN THE REQUESTED LANGUAGE." }
     },
-    required: ["deckName", "mainDeck"]
+    required: ["deckName", "mainDeck", "strategyGuide"]
 };
 
 // Helper to normalize card data from API
@@ -133,15 +134,29 @@ export const identifyCard = async (base64Image: string) => {
   }
 };
 
-export const generateDeck = async (coreCards: string[], mode: 'OWNED' | 'UNLIMITED', availableCollection: string[] = []) => {
+export const generateDeck = async (coreCards: string[], mode: 'OWNED' | 'UNLIMITED', availableCollection: string[] = [], lang: Language = 'en') => {
     try {
+        const langMap: Record<Language, string> = {
+            'pt': 'Portuguese',
+            'en': 'English',
+            'es': 'Spanish',
+            'ja': 'Japanese',
+            'de': 'German',
+            'fr': 'French',
+            'it': 'Italian',
+            'ko': 'Korean'
+        };
+        const targetLanguage = langMap[lang] || 'English';
+
         const prompt = mode === 'OWNED' 
             ? `Build the best possible Yu-Gi-Oh! deck that focuses on these core cards: ${coreCards.join(', ')}. 
                CRITICAL: You must ONLY use cards from this available list: ${availableCollection.join(', ')}. Do not suggest cards not in the list.
-               Construct a Main Deck (40-60 cards) and an Extra Deck (0-15 cards) if the strategy requires it.`
+               Construct a Main Deck (40-60 cards) and an Extra Deck (0-15 cards).
+               Also write a strategy guide in ${targetLanguage} explaining how to use the deck.`
             : `Build a competitive/meta Yu-Gi-Oh! deck revolving around: ${coreCards.join(', ')}. 
                You can suggest any card in the game. 
-               Construct a Main Deck (40 cards usually) and an Extra Deck (up to 15 cards) containing relevant Fusion, Synchro, Xyz, or Link monsters.`;
+               Construct a Main Deck (40 cards usually) and an Extra Deck (up to 15 cards).
+               Also write a strategy guide in ${targetLanguage} explaining how to use the deck.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -154,7 +169,7 @@ export const generateDeck = async (coreCards: string[], mode: 'OWNED' | 'UNLIMIT
         });
 
         if (!response.text) throw new Error("AI Generation failed");
-        return JSON.parse(response.text) as { deckName: string, mainDeck: string[], extraDeck?: string[] };
+        return JSON.parse(response.text) as { deckName: string, mainDeck: string[], extraDeck?: string[], strategyGuide: string };
 
     } catch (e) {
         console.error("Deck Generation Failed", e);
