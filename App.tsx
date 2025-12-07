@@ -83,7 +83,9 @@ export default function App() {
         // Update decks that might contain this card
         const updatedDecks = decks.map(d => ({
           ...d,
-          cards: d.cards.filter(cId => cId !== id)
+          cards: d.cards.filter(cId => cId !== id),
+          extraDeck: d.extraDeck?.filter(cId => cId !== id),
+          sideDeck: d.sideDeck?.filter(cId => cId !== id)
         }));
         setDecks(updatedDecks);
         
@@ -97,16 +99,22 @@ export default function App() {
     }
   };
 
-  const handleCreateDeck = async (name: string, initialCards: CardData[] = []) => {
+  const handleCreateDeck = async (name: string, mainCards: CardData[] = [], extraCards: CardData[] = [], sideCards: CardData[] = []) => {
     try {
-        // If AI generated cards that aren't in our DB yet, save them properly
-        if (initialCards.length > 0) {
+        // Collect all new cards from all sections
+        const allNewCards = [...mainCards, ...extraCards, ...sideCards];
+
+        if (allNewCards.length > 0) {
             const newCardsToSave: CardData[] = [];
             const currentCardIds = new Set(cards.map(c => c.id));
             
-            for (const card of initialCards) {
-                if (!currentCardIds.has(card.id)) {
+            // Deduplicate logic just in case
+            const processedIds = new Set<string>();
+
+            for (const card of allNewCards) {
+                if (!currentCardIds.has(card.id) && !processedIds.has(card.id)) {
                     newCardsToSave.push(card);
+                    processedIds.add(card.id);
                 }
             }
 
@@ -119,7 +127,9 @@ export default function App() {
         const newDeck: Deck = {
             id: crypto.randomUUID(),
             name,
-            cards: initialCards.map(c => c.id),
+            cards: mainCards.map(c => c.id),
+            extraDeck: extraCards.map(c => c.id),
+            sideDeck: sideCards.map(c => c.id),
             createdAt: Date.now()
         };
 

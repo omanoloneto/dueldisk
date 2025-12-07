@@ -8,12 +8,14 @@ import { generateDeck, searchCardByName } from '../services/geminiService';
 interface DeckBuilderProps {
   decks: Deck[];
   allCards: CardData[];
-  onCreateDeck: (name: string, cards?: CardData[]) => void;
+  onCreateDeck: (name: string, mainCards: CardData[], extraCards?: CardData[], sideCards?: CardData[]) => void;
   onUpdateDeck: (deck: Deck) => void;
   onDeleteDeck: (id: string) => void;
   onChangeView: (view: AppView) => void;
   lang: Language;
 }
+
+type DeckTab = 'MAIN' | 'EXTRA' | 'SIDE';
 
 export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   decks,
@@ -26,6 +28,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 }) => {
   const t = translations[lang];
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<DeckTab>('MAIN');
   
   // Manual Create State
   const [isCreating, setIsCreating] = useState(false);
@@ -41,14 +44,14 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   const activeDeck = decks.find(d => d.id === activeDeckId);
 
-  const activeDeckCards = activeDeck 
-    ? activeDeck.cards.map(id => allCards.find(c => c.id === id)).filter(Boolean) as CardData[]
-    : [];
+  const getCardObjects = (ids: string[] = []) => {
+      return ids.map(id => allCards.find(c => c.id === id)).filter(Boolean) as CardData[];
+  };
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newDeckName.trim()) {
-      onCreateDeck(newDeckName.trim());
+      onCreateDeck(newDeckName.trim(), []);
       setNewDeckName('');
       setIsCreating(false);
     }
@@ -56,19 +59,45 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   const removeCardFromDeck = (indexToRemove: number) => {
     if (!activeDeck) return;
-    const newCardIds = [...activeDeck.cards];
-    newCardIds.splice(indexToRemove, 1);
-    onUpdateDeck({ ...activeDeck, cards: newCardIds });
+    
+    let updatedDeck = { ...activeDeck };
+    
+    if (activeTab === 'MAIN') {
+        const newIds = [...activeDeck.cards];
+        newIds.splice(indexToRemove, 1);
+        updatedDeck.cards = newIds;
+    } else if (activeTab === 'EXTRA') {
+        const newIds = [...(activeDeck.extraDeck || [])];
+        newIds.splice(indexToRemove, 1);
+        updatedDeck.extraDeck = newIds;
+    } else {
+        const newIds = [...(activeDeck.sideDeck || [])];
+        newIds.splice(indexToRemove, 1);
+        updatedDeck.sideDeck = newIds;
+    }
+
+    onUpdateDeck(updatedDeck);
   };
 
   const addCardToDeck = (card: CardData) => {
     if (!activeDeck) return;
-    if (activeDeck.cards.length >= 60) {
-        alert("Deck Full!");
-        return;
+    
+    let updatedDeck = { ...activeDeck };
+    
+    if (activeTab === 'MAIN') {
+        if (activeDeck.cards.length >= 60) { alert("Main Deck Full (60)!"); return; }
+        updatedDeck.cards = [...activeDeck.cards, card.id];
+    } else if (activeTab === 'EXTRA') {
+        const currentExtra = activeDeck.extraDeck || [];
+        if (currentExtra.length >= 15) { alert("Extra Deck Full (15)!"); return; }
+        updatedDeck.extraDeck = [...currentExtra, card.id];
+    } else {
+        const currentSide = activeDeck.sideDeck || [];
+        if (currentSide.length >= 15) { alert("Side Deck Full (15)!"); return; }
+        updatedDeck.sideDeck = [...currentSide, card.id];
     }
-    const newCardIds = [...activeDeck.cards, card.id];
-    onUpdateDeck({ ...activeDeck, cards: newCardIds });
+
+    onUpdateDeck(updatedDeck);
     setShowCardSelector(false);
   };
 
@@ -77,7 +106,6 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       setAiCoreCards(prev => {
           const exists = prev.find(c => c.id === card.id);
           if (exists) return prev.filter(c => c.id !== card.id);
-          // No limit check here anymore
           return [...prev, card];
       });
   };
@@ -92,41 +120,46 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
           const result = await generateDeck(coreNames, aiMode, collectionNames);
           
-          let finalCards: CardData[] = [];
+          let mainCards: CardData[] = [];
+          let extraCards: CardData[] = [];
           
-          // Merge main and extra for processing
-          const allGeneratedNames = [...result.mainDeck, ...(result.extraDeck || [])];
-
-          for (const name of allGeneratedNames) {
-              const ownedCard = allCards.find(c => c.name.toLowerCase() === name.toLowerCase());
-              if (ownedCard) {
-                  finalCards.push(ownedCard);
-              } else if (aiMode === 'UNLIMITED') {
-                  const apiResults = await searchCardByName(name);
-                  if (apiResults && apiResults.length > 0) {
-                      const res = apiResults[0];
-                      const newProxyCard: CardData = {
-                          id: crypto.randomUUID(),
-                          name: res.name || name,
-                          type: res.type || CardType.UNKNOWN,
-                          description: res.description || '',
-                          atk: res.atk,
-                          def: res.def,
-                          level: res.level,
-                          imageUrl: res.imageUrl,
-                          scanDate: Date.now(),
-                          isOwned: false // Mark as not owned (Proxy)
-                      };
-                      finalCards.push(newProxyCard);
-                  }
+          const processCardList = async (names: string[], targetList: CardData[]) => {
+              for (const name of names) {
+                const ownedCard = allCards.find(c => c.name.toLowerCase() === name.toLowerCase());
+                if (ownedCard) {
+                    targetList.push(ownedCard);
+                } else if (aiMode === 'UNLIMITED') {
+                    const apiResults = await searchCardByName(name);
+                    if (apiResults && apiResults.length > 0) {
+                        const res = apiResults[0];
+                        const newProxyCard: CardData = {
+                            id: crypto.randomUUID(),
+                            name: res.name || name,
+                            type: res.type || CardType.UNKNOWN,
+                            description: res.description || '',
+                            atk: res.atk,
+                            def: res.def,
+                            level: res.level,
+                            imageUrl: res.imageUrl,
+                            scanDate: Date.now(),
+                            isOwned: false
+                        };
+                        targetList.push(newProxyCard);
+                    }
+                }
               }
+          };
+
+          await processCardList(result.mainDeck, mainCards);
+          if (result.extraDeck) {
+              await processCardList(result.extraDeck, extraCards);
           }
           
-          onCreateDeck(result.deckName, finalCards);
+          onCreateDeck(result.deckName, mainCards, extraCards);
           setShowAiWizard(false);
           setAiStep(1);
           setAiCoreCards([]);
-          setAiMode('OWNED'); // Reset default
+          setAiMode('OWNED');
           alert(t.ai_success);
       } catch (e) {
           alert(t.ai_error);
@@ -136,7 +169,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
       }
   };
 
-  // Helper stats
+  // Helper stats for Main Deck
   const getDeckStats = (cards: CardData[]) => {
       const monsters = cards.filter(c => c.type === CardType.MONSTER).length;
       const spells = cards.filter(c => c.type === CardType.SPELL).length;
@@ -178,7 +211,6 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                                 />
                             </div>
                             
-                            {/* Selected Cards Strip */}
                             <div className="py-3 h-28 overflow-x-auto flex gap-2 shrink-0 border-t border-m3-outline/10 mt-2">
                                 {aiCoreCards.length === 0 && (
                                     <div className="w-full flex items-center justify-center text-m3-onSurfaceVariant text-sm border-2 border-dashed border-m3-outline/20 rounded-xl bg-m3-surfaceContainerLow">
@@ -193,7 +225,6 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                                 ))}
                             </div>
                             
-                            {/* Next Step Button */}
                             <div className="pt-2 shrink-0">
                                 <button 
                                     onClick={() => aiCoreCards.length > 0 && setAiStep(2)}
@@ -302,7 +333,6 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                     onClick={() => setActiveDeckId(deck.id)}
                     className="bg-m3-surfaceContainerLow rounded-xl overflow-hidden cursor-pointer group active:scale-95 transition-all shadow-md relative aspect-[3/4] flex flex-col"
                     >
-                    {/* Deck Box Visual */}
                     <div className="flex-1 bg-gradient-to-br from-m3-surfaceContainerHigh to-m3-surfaceContainer relative">
                         {(() => {
                                 const firstCard = allCards.find(c => c.id === deck.cards[0]);
@@ -345,8 +375,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   if (showCardSelector) {
     return (
       <div className="fixed inset-0 z-50 bg-m3-background flex flex-col animate-in slide-in-from-bottom duration-200">
-          <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainer">
-              <h3 className="font-bold text-m3-onSurface text-lg">{t.col_add_title}</h3>
+          <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainer shrink-0">
+              <h3 className="font-bold text-m3-onSurface text-lg">{t.col_add_title} ({activeTab})</h3>
               <button onClick={() => setShowCardSelector(false)} className="p-2 text-m3-onSurfaceVariant"><X /></button>
           </div>
           <div className="flex-1 overflow-hidden min-h-0">
@@ -364,14 +394,19 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   }
 
   // --- View: Single Deck Editor ---
-  const stats = getDeckStats(activeDeckCards);
+  const activeDeckMain = getCardObjects(activeDeck.cards);
+  const activeDeckExtra = getCardObjects(activeDeck.extraDeck);
+  const activeDeckSide = getCardObjects(activeDeck.sideDeck);
+
+  const currentDisplayCards = activeTab === 'MAIN' ? activeDeckMain : (activeTab === 'EXTRA' ? activeDeckExtra : activeDeckSide);
+  const stats = getDeckStats(activeDeckMain);
 
   return (
     <div className="flex flex-col h-full bg-m3-background">
       {/* Sticky Header with Stats */}
       <div className="bg-m3-surfaceContainer shadow-sm sticky top-0 z-10 shrink-0">
           <div className="px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setActiveDeckId(null)} className="text-m3-onSurface p-1 rounded-full hover:bg-black/10">
+            <button onClick={() => { setActiveDeckId(null); setActiveTab('MAIN'); }} className="text-m3-onSurface p-1 rounded-full hover:bg-black/10">
                 <ArrowLeft size={24} />
             </button>
             <div className="flex-1 min-w-0">
@@ -380,30 +415,54 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                     <span className="text-yugi-monster font-bold">{stats.monsters} Mon</span>
                     <span className="text-yugi-spell font-bold">{stats.spells} Spell</span>
                     <span className="text-yugi-trap font-bold">{stats.traps} Trap</span>
-                    <span className="ml-auto">{activeDeck.cards.length}/60</span>
                 </div>
             </div>
             <button 
-                onClick={() => setActiveDeckId(null)} 
+                onClick={() => { setActiveDeckId(null); setActiveTab('MAIN'); }}
                 className="bg-m3-primary text-m3-onPrimary p-2 rounded-full shadow-sm hover:brightness-110 active:scale-95 transition-all"
             >
                 <Check size={20} />
             </button>
           </div>
+
+          {/* Material 3 Tabs */}
+          <div className="flex flex-row w-full border-b border-m3-outline/20">
+              <button 
+                onClick={() => setActiveTab('MAIN')}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'MAIN' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface'}`}
+              >
+                  Main ({activeDeckMain.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('EXTRA')}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'EXTRA' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface'}`}
+              >
+                  Extra ({activeDeckExtra.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('SIDE')}
+                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors relative overflow-hidden ${activeTab === 'SIDE' ? 'border-m3-primary text-m3-primary' : 'border-transparent text-m3-onSurfaceVariant hover:text-m3-onSurface'}`}
+              >
+                  Side ({activeDeckSide.length})
+              </button>
+          </div>
       </div>
 
       {/* Grid Content */}
       <div className="flex-1 overflow-y-auto p-2 pb-24 min-h-0">
-        {activeDeckCards.length === 0 ? (
-           <div className="h-full flex flex-col items-center justify-center text-m3-onSurfaceVariant opacity-50">
+        {currentDisplayCards.length === 0 ? (
+           <div className="h-full flex flex-col items-center justify-center text-m3-onSurfaceVariant opacity-50 animate-in fade-in">
                <Layers size={48} className="mb-2" />
                <p>{t.deck_empty}</p>
+               <span className="text-xs mt-1 bg-m3-surfaceContainerHigh px-2 py-1 rounded">
+                   Tab: {activeTab}
+               </span>
            </div>
         ) : (
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5">
-                {activeDeckCards.map((card, index) => (
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 animate-in fade-in slide-in-from-bottom-2">
+                {currentDisplayCards.map((card, index) => (
                     <div 
-                        key={`${card.id}-${index}`} 
+                        key={`${card.id}-${index}-${activeTab}`} 
                         className="aspect-[2/3] relative rounded overflow-hidden group border border-m3-outline/20 shadow-sm bg-black"
                         onClick={() => removeCardFromDeck(index)}
                     >

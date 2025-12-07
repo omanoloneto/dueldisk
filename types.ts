@@ -23,7 +23,9 @@ export interface CardData {
 export interface Deck {
   id: string;
   name: string;
-  cards: string[]; // Array of CardData IDs
+  cards: string[]; // Main Deck IDs
+  extraDeck?: string[]; // Extra Deck IDs
+  sideDeck?: string[]; // Side Deck IDs
   createdAt: number;
 }
 
