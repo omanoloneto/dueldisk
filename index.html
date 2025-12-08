@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#141218" />
+    <meta name="description" content="Scan Yu-Gi-Oh! cards, build decks, and track Life Points." />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1673/1673628.png" />
     <title>DuelDisk Scanner</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -53,6 +57,8 @@
         font-family: 'Roboto', sans-serif;
         overscroll-behavior: none;
         transition: background-color 0.3s, color 0.3s;
+        /* Prevent pull-to-refresh on mobile for app-like feel */
+        overscroll-behavior-y: none;
       }
       
       /* Custom scrollbar for webkit */
