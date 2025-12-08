@@ -1,7 +1,23 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { CardType, CardData, Language } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to get API Key safely across different environments (Vite vs Node)
+const getApiKey = () => {
+  // @ts-ignore - Check for Vite env
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_KEY) {
+    // @ts-ignore
+    return import.meta.env.VITE_API_KEY;
+  }
+  // Fallback to process.env if available (Node/Standard)
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  return '';
+};
+
+const apiKey = getApiKey();
+// Note: If you are building locally, create a .env file with VITE_API_KEY=your_key
+const ai = new GoogleGenAI({ apiKey: apiKey });
 
 const cardSchema: Schema = {
   type: Type.OBJECT,
@@ -28,7 +44,7 @@ const deckSchema: Schema = {
         deckName: { type: Type.STRING, description: "A creative name for the deck" },
         mainDeck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of card names for the Main Deck (40-60 cards)" },
         extraDeck: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of card names for the Extra Deck (0-15 cards)" },
-        strategyGuide: { type: Type.STRING, description: "A concise guide on how to play the deck, key combos, and win conditions. MUST BE IN THE REQUESTED LANGUAGE." }
+        strategyGuide: { type: Type.STRING, description: "A concise guide on how to use the deck, key combos, and win conditions. MUST BE IN THE REQUESTED LANGUAGE." }
     },
     required: ["deckName", "mainDeck", "strategyGuide"]
 };

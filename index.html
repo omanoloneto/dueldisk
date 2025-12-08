@@ -8,6 +8,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1673/1673628.png" />
     <title>DuelDisk Scanner</title>
+    <!-- Tailwind via CDN is fine for simple setups, but for production apps ideally install it locally -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -59,6 +60,8 @@
         transition: background-color 0.3s, color 0.3s;
         /* Prevent pull-to-refresh on mobile for app-like feel */
         overscroll-behavior-y: none;
+        user-select: none; /* App-like feel */
+        -webkit-user-select: none;
       }
       
       /* Custom scrollbar for webkit */
@@ -116,19 +119,23 @@
         }
       }
     </script>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
     "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1"
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://aistudiocdn.com/vite@^7.2.7",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0"
   }
 }
 </script>
 </head>
   <body>
     <div id="root"></div>
+    <!-- CRITICAL FIX: Explicit entry point for Vite/Capacitor -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
