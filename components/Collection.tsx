@@ -201,8 +201,8 @@ export const Collection: React.FC<CollectionProps> = ({
   return (
     <div className="flex flex-col h-full bg-m3-background relative">
       
-      {/* Classic Top Bar */}
-      <div className="bg-m3-surfaceContainer shadow-sm sticky top-0 z-20 flex flex-col">
+      {/* Classic Top Bar with Safe Area Top */}
+      <div className="bg-m3-surfaceContainer shadow-sm sticky top-0 z-20 flex flex-col pt-[env(safe-area-inset-top)]">
         <div className="h-16 px-4 flex items-center justify-between border-b border-white/5">
             {showSearch ? (
                 <div className="flex-1 flex items-center gap-2 animate-in slide-in-from-right fade-in duration-200">
@@ -322,7 +322,7 @@ export const Collection: React.FC<CollectionProps> = ({
 
       {/* Add Card Modal */}
       {isAddModalOpen && (
-          <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 pt-[env(safe-area-inset-top)]">
               <div className="bg-m3-surfaceContainer w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[90vh] flex flex-col animate-in slide-in-from-bottom shadow-2xl overflow-hidden relative">
                   {/* Header */}
                   <div className="p-4 border-b border-m3-outline/10 flex justify-between items-center shrink-0">

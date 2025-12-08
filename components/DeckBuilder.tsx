@@ -264,7 +264,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
         const canUseOwnedMode = allCards.length >= 40;
 
         return (
-            <div className="flex flex-col h-full bg-m3-background p-4 animate-in slide-in-from-right">
+            <div className="flex flex-col h-full bg-m3-background p-4 pt-[calc(1rem+env(safe-area-inset-top))] animate-in slide-in-from-right">
                 {/* ... AI Wizard JSX (no changes) ... */}
                 <div className="flex items-center gap-4 mb-4 shrink-0">
                     <button onClick={() => setShowAiWizard(false)} className="p-2"><ArrowLeft /></button>
@@ -365,7 +365,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     }
 
     return (
-      <div className="flex flex-col h-full bg-m3-background p-4 relative">
+      <div className="flex flex-col h-full bg-m3-background p-4 pt-[calc(1rem+env(safe-area-inset-top))] relative">
         <div className="flex justify-between items-center mb-6 mt-4 shrink-0">
           <h2 className="text-3xl font-normal text-m3-onSurface">{t.nav_decks}</h2>
           <div className="flex gap-2">
@@ -507,7 +507,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   if (showCardSelector) {
     return (
       <div className="fixed inset-0 z-[60] bg-m3-background flex flex-col animate-in slide-in-from-bottom duration-200">
-          <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainer shrink-0">
+          <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainer shrink-0 pt-[env(safe-area-inset-top)]">
               <h3 className="font-bold text-m3-onSurface text-lg">{t.col_add_title} ({activeTab})</h3>
               <button onClick={() => setShowCardSelector(false)} className="p-2 text-m3-onSurfaceVariant hover:bg-m3-surfaceContainerHigh rounded-full"><X /></button>
           </div>
@@ -536,8 +536,8 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-m3-background">
-      {/* Sticky Header with Stats */}
-      <div className="bg-m3-surfaceContainer shadow-md sticky top-0 z-10 shrink-0 border-b border-white/5">
+      {/* Sticky Header with Stats and Safe Area */}
+      <div className="bg-m3-surfaceContainer shadow-md sticky top-0 z-10 shrink-0 border-b border-white/5 pt-[env(safe-area-inset-top)]">
           <div className="px-4 py-3 flex items-center gap-3">
             <button onClick={() => { setActiveDeckId(null); setActiveTab('MAIN'); }} className="text-m3-onSurface p-2 -ml-2 rounded-full hover:bg-m3-surfaceContainerHigh transition-colors">
                 <ArrowLeft size={24} />
@@ -651,7 +651,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
       {/* Notes Modal */}
       {showNotesModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in pt-[env(safe-area-inset-top)]">
              <div className="bg-m3-surfaceContainer w-full max-w-md rounded-2xl overflow-hidden flex flex-col max-h-[80vh] shadow-2xl animate-in zoom-in-95 border border-white/5">
                  <div className="p-4 border-b border-m3-outline/20 flex justify-between items-center bg-m3-surfaceContainerHigh">
                      <h3 className="font-bold text-m3-onSurface flex items-center gap-2">

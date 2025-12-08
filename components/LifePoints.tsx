@@ -83,7 +83,7 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-m3-background relative overflow-hidden">
+    <div className="flex flex-col h-full bg-m3-background relative overflow-hidden pt-[env(safe-area-inset-top)]">
       
       {/* Health Bar (Visual Indicator) */}
       <div className="h-2 w-full bg-m3-surfaceContainerHigh">
@@ -96,8 +96,8 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
       {/* LP Display Area */}
       <div className="flex-1 flex flex-col items-center justify-center relative bg-m3-surfaceContainerLow transition-colors duration-300">
           
-          {/* Centered Top Tools Bar */}
-          <div className="absolute top-6 w-full flex justify-center z-50 pointer-events-none">
+          {/* Centered Top Tools Bar - Pushed down by safe area */}
+          <div className="absolute top-4 w-full flex justify-center z-50 pointer-events-none">
                 <div className="pointer-events-auto flex gap-3 bg-black/20 backdrop-blur-md p-2 rounded-full border border-white/10 shadow-sm">
                    <button onClick={rollDice} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all">
                        <Dices size={20} />
@@ -116,7 +116,7 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
           </div>
           
           {/* History Log (Absolute Left) */}
-          <div className="absolute top-6 left-6 flex flex-col gap-1 items-start opacity-70 z-40 pointer-events-none">
+          <div className="absolute top-4 left-6 flex flex-col gap-1 items-start opacity-70 z-40 pointer-events-none">
             {history.map((val, i) => (
                 <span key={i} className={`text-sm font-bold tabular-nums animate-in slide-in-from-left fade-in ${val > 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {val > 0 ? '+' : ''}{val}

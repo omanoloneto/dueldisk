@@ -41,8 +41,8 @@ export const CardDetails: React.FC<CardDetailsProps> = ({ card, onClose }) => {
              </button>
         </div>
 
-        {/* Navigation Layer (Fixed on top) */}
-        <div className="absolute top-0 left-0 w-full z-20 p-4 flex justify-between items-start pointer-events-none">
+        {/* Navigation Layer (Fixed on top) - Adjusted for Safe Area */}
+        <div className="absolute top-0 left-0 w-full z-20 p-4 pt-[calc(1rem+env(safe-area-inset-top))] flex justify-between items-start pointer-events-none">
             <button 
                 onClick={onClose}
                 className="pointer-events-auto bg-black/40 hover:bg-black/60 text-white rounded-full p-3 backdrop-blur-md transition-colors border border-white/10 shadow-lg"
@@ -129,7 +129,7 @@ export const CardDetails: React.FC<CardDetailsProps> = ({ card, onClose }) => {
             <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center animate-in fade-in duration-200" onClick={() => setIsZoomed(false)}>
                 <button 
                     onClick={() => setIsZoomed(false)}
-                    className="absolute top-6 right-6 text-white/80 p-2 bg-white/10 rounded-full z-50"
+                    className="absolute top-6 right-6 text-white/80 p-2 bg-white/10 rounded-full z-50 mt-[env(safe-area-inset-top)]"
                 >
                     <X size={32} />
                 </button>

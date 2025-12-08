@@ -293,15 +293,17 @@ export default function App() {
 
         {/* Notification Toast */}
         {notification && (
-          <div className="absolute bottom-24 left-4 bg-m3-onSurface text-m3-surfaceContainer px-6 py-3 rounded-xl shadow-xl z-50 animate-bounce font-medium text-sm whitespace-nowrap">
-            {notification}
+          <div className="absolute bottom-24 left-4 right-4 text-center md:left-4 md:right-auto md:text-left pointer-events-none">
+            <div className="inline-block bg-m3-onSurface text-m3-surfaceContainer px-6 py-3 rounded-xl shadow-xl z-50 animate-bounce font-medium text-sm">
+                {notification}
+            </div>
           </div>
         )}
       </main>
 
       {/* Material 3 Bottom Navigation - Hide on Full Screen Details */}
       {view !== AppView.CARD_DETAILS && (
-        <nav className="bg-m3-surfaceContainer border-t border-m3-outline/10 safe-pb shrink-0 z-50">
+        <nav className="bg-m3-surfaceContainer border-t border-m3-outline/10 shrink-0 z-50 pb-[env(safe-area-inset-bottom)]">
             <div className="flex justify-around items-center h-[72px]">
             <NavItem 
                 icon={Swords} 

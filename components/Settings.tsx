@@ -25,7 +25,7 @@ export const Settings: React.FC<SettingsProps> = ({ lang, setLang, theme, setThe
   ];
 
   return (
-    <div className="flex flex-col h-full bg-m3-background p-6 overflow-y-auto safe-pb">
+    <div className="flex flex-col h-full bg-m3-background p-6 pt-[calc(1.5rem+env(safe-area-inset-top))] overflow-y-auto safe-pb">
       <h2 className="text-3xl font-normal text-m3-onSurface mb-8 mt-2">{t.settings_title}</h2>
 
       <div className="space-y-6">
