@@ -71,14 +71,14 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
   const rollDice = () => {
       triggerHaptic();
       const result = Math.floor(Math.random() * 6) + 1;
-      setToolResult(`🎲 ${result}`);
+      setToolResult(`${t.dice_roll} ${result}`);
       setTimeout(() => setToolResult(null), 3000);
   };
 
   const flipCoin = () => {
       triggerHaptic();
       const isHeads = Math.random() > 0.5;
-      setToolResult(isHeads ? '🪙 Heads' : '🪙 Tails');
+      setToolResult(isHeads ? `🪙 ${t.coin_heads}` : `🪙 ${t.coin_tails}`);
       setTimeout(() => setToolResult(null), 3000);
   };
 
@@ -96,36 +96,35 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
       {/* LP Display Area */}
       <div className="flex-1 flex flex-col items-center justify-center relative bg-m3-surfaceContainerLow transition-colors duration-300">
           
-          {/* Top Tools Bar */}
-          <div className="absolute top-4 left-0 right-0 px-6 flex justify-between items-start z-50">
-               {/* History Log */}
-               <div className="flex flex-col gap-1 items-start opacity-70">
-                    {history.map((val, i) => (
-                        <span key={i} className={`text-sm font-bold tabular-nums animate-in slide-in-from-left fade-in ${val > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {val > 0 ? '+' : ''}{val}
-                        </span>
-                    ))}
-               </div>
-
-               {/* Tools & Reset */}
-               <div className="flex gap-2">
-                   <button onClick={rollDice} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all border border-white/5">
+          {/* Centered Top Tools Bar */}
+          <div className="absolute top-6 w-full flex justify-center z-50 pointer-events-none">
+                <div className="pointer-events-auto flex gap-3 bg-black/20 backdrop-blur-md p-2 rounded-full border border-white/10 shadow-sm">
+                   <button onClick={rollDice} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all">
                        <Dices size={20} />
                    </button>
-                   <button onClick={flipCoin} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all border border-white/5">
+                   <button onClick={flipCoin} className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-primary hover:bg-m3-surfaceContainer active:scale-90 transition-all">
                        <CircleDot size={20} />
                    </button>
                    <button 
                         onClick={reset} 
                         aria-label={t.lp_reset}
-                        className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-error hover:bg-m3-surfaceContainer active:scale-90 transition-all border border-white/5"
+                        className="p-3 bg-m3-surfaceContainer/50 rounded-full text-m3-onSurfaceVariant hover:text-m3-error hover:bg-m3-surfaceContainer active:scale-90 transition-all"
                     >
                         <RefreshCw size={20} />
                     </button>
                </div>
           </div>
           
-          <div className="flex flex-col items-center z-10 select-none">
+          {/* History Log (Absolute Left) */}
+          <div className="absolute top-6 left-6 flex flex-col gap-1 items-start opacity-70 z-40 pointer-events-none">
+            {history.map((val, i) => (
+                <span key={i} className={`text-sm font-bold tabular-nums animate-in slide-in-from-left fade-in ${val > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {val > 0 ? '+' : ''}{val}
+                </span>
+            ))}
+          </div>
+          
+          <div className="flex flex-col items-center z-10 select-none mt-10">
             <span className="text-m3-onSurfaceVariant text-xs font-bold tracking-[0.3em] uppercase mb-4 opacity-50">Life Points</span>
             <h1 className={`font-bold text-m3-onSurface tabular-nums leading-none tracking-tighter transition-all duration-300 drop-shadow-2xl ${inputValue !== '0' ? 'opacity-20 scale-90 blur-sm' : 'opacity-100 scale-100'}`} style={{ fontSize: 'min(22vw, 8rem)' }}>
                 {lp}
@@ -135,7 +134,7 @@ export const LifePoints: React.FC<LifePointsProps> = ({ lang }) => {
           {/* Tools Result Overlay */}
           {toolResult && (
               <div className="absolute top-1/4 z-40 bg-black/80 backdrop-blur-md px-8 py-4 rounded-2xl animate-in zoom-in fade-in duration-300 border border-white/10">
-                  <span className="text-4xl font-bold text-white">{toolResult}</span>
+                  <span className="text-3xl font-bold text-white">{toolResult}</span>
               </div>
           )}
 

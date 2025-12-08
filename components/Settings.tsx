@@ -25,7 +25,7 @@ export const Settings: React.FC<SettingsProps> = ({ lang, setLang, theme, setThe
   ];
 
   return (
-    <div className="flex flex-col h-full bg-m3-background p-6">
+    <div className="flex flex-col h-full bg-m3-background p-6 overflow-y-auto safe-pb">
       <h2 className="text-3xl font-normal text-m3-onSurface mb-8 mt-2">{t.settings_title}</h2>
 
       <div className="space-y-6">
@@ -79,12 +79,12 @@ export const Settings: React.FC<SettingsProps> = ({ lang, setLang, theme, setThe
         </div>
 
         {/* Version Info */}
-        <div className="flex flex-col items-center justify-center mt-8 p-4 opacity-50">
+        <div className="flex flex-col items-center justify-center mt-8 p-4 opacity-50 pb-20">
             <div className="w-12 h-12 bg-m3-primaryContainer rounded-xl flex items-center justify-center mb-2">
                 <span className="text-2xl font-bold text-m3-onPrimaryContainer">D</span>
             </div>
             <p className="text-m3-onSurface text-sm font-bold">DuelDisk Scanner</p>
-            <p className="text-m3-onSurfaceVariant text-xs">{t.settings_version} 1.0.2</p>
+            <p className="text-m3-onSurfaceVariant text-xs">{t.settings_version} 1.0.3</p>
         </div>
       </div>
     </div>

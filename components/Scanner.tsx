@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { identifyCard } from '../services/geminiService';
 import { CardData, Language } from '../types';
-import { Camera, RefreshCw, CheckCircle, AlertTriangle, ScanLine } from 'lucide-react';
+import { Camera, RefreshCw, CheckCircle, AlertTriangle, ScanLine, Minus, Plus } from 'lucide-react';
 import { translations } from '../utils/i18n';
 
 interface ScannerProps {
@@ -13,6 +13,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
   const [image, setImage] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const t = translations[lang];
 
@@ -23,6 +24,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
       reader.onloadend = () => {
         setImage(reader.result as string);
         setError(null);
+        setQuantity(1); // Reset quantity on new capture
       };
       reader.readAsDataURL(file);
     }
@@ -48,7 +50,8 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
         race: result.race,
         imageUrl: result.imageUrl || image, 
         scanDate: Date.now(),
-        isOwned: true
+        isOwned: true,
+        quantity: quantity // Use the selected quantity
       };
 
       onCardScanned(newCard);
@@ -106,47 +109,70 @@ export const Scanner: React.FC<ScannerProps> = ({ onCardScanned, lang }) => {
         )}
       </div>
 
-      <div className="flex gap-4 mt-4 shrink-0">
+      <div className="flex flex-col gap-3 mt-4 shrink-0">
         {image && !isScanning && (
-            <button 
-                onClick={() => setImage(null)}
-                className="flex-1 py-3 px-6 rounded-xl bg-m3-surfaceContainerHigh text-m3-primary font-medium transition-all hover:bg-m3-secondaryContainer"
-            >
-                {t.deck_cancel}
-            </button>
+            <div className="flex items-center justify-center gap-4 bg-m3-surfaceContainer p-2 rounded-xl border border-white/5">
+                <span className="text-sm font-medium text-m3-onSurfaceVariant uppercase tracking-wide">Quantity:</span>
+                <div className="flex items-center gap-3 bg-m3-surfaceContainerHigh rounded-lg p-1">
+                    <button 
+                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
+                        className="p-2 hover:bg-m3-secondaryContainer rounded-md transition-colors text-m3-onSurface"
+                    >
+                        <Minus size={18} />
+                    </button>
+                    <span className="text-xl font-bold w-8 text-center tabular-nums">{quantity}</span>
+                    <button 
+                        onClick={() => setQuantity(q => q + 1)}
+                        className="p-2 hover:bg-m3-secondaryContainer rounded-md transition-colors text-m3-onSurface"
+                    >
+                        <Plus size={18} />
+                    </button>
+                </div>
+            </div>
         )}
-        
-        {image ? (
-          <button
-            onClick={processImage}
-            disabled={isScanning}
-            className={`flex-1 py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md ${
-              isScanning 
-                ? 'bg-m3-surfaceContainer text-m3-onSurfaceVariant cursor-not-allowed' 
-                : 'bg-m3-primaryContainer text-m3-onPrimaryContainer hover:brightness-110'
-            }`}
-          >
-            {isScanning ? (
-              <>
-                <RefreshCw className="animate-spin" size={20} />
-                {t.scanner_processing}
-              </>
-            ) : (
-              <>
-                <CheckCircle size={20} />
-                {t.scanner_confirm}
-              </>
+
+        <div className="flex gap-4">
+            {image && !isScanning && (
+                <button 
+                    onClick={() => setImage(null)}
+                    className="flex-1 py-3 px-6 rounded-xl bg-m3-surfaceContainerHigh text-m3-primary font-medium transition-all hover:bg-m3-secondaryContainer"
+                >
+                    {t.deck_cancel}
+                </button>
             )}
-          </button>
-        ) : (
+            
+            {image ? (
             <button
-            onClick={triggerCamera}
-            className="w-full py-4 rounded-xl font-bold text-lg bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-lg flex items-center justify-center gap-3 hover:brightness-110 transition-all active:scale-95"
-          >
-            <Camera size={24} />
-            {t.add_scan}
-          </button>
-        )}
+                onClick={processImage}
+                disabled={isScanning}
+                className={`flex-1 py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md ${
+                isScanning 
+                    ? 'bg-m3-surfaceContainer text-m3-onSurfaceVariant cursor-not-allowed' 
+                    : 'bg-m3-primaryContainer text-m3-onPrimaryContainer hover:brightness-110'
+                }`}
+            >
+                {isScanning ? (
+                <>
+                    <RefreshCw className="animate-spin" size={20} />
+                    {t.scanner_processing}
+                </>
+                ) : (
+                <>
+                    <CheckCircle size={20} />
+                    {t.scanner_confirm}
+                </>
+                )}
+            </button>
+            ) : (
+                <button
+                onClick={triggerCamera}
+                className="w-full py-4 rounded-xl font-bold text-lg bg-m3-primaryContainer text-m3-onPrimaryContainer shadow-lg flex items-center justify-center gap-3 hover:brightness-110 transition-all active:scale-95"
+            >
+                <Camera size={24} />
+                {t.add_scan}
+            </button>
+            )}
+        </div>
       </div>
     </div>
   );

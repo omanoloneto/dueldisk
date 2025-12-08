@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Deck, CardData, AppView, Language, CardType } from '../types';
 import { Collection } from './Collection';
 import { translations } from '../utils/i18n';
@@ -47,6 +47,11 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   const [aiCoreCards, setAiCoreCards] = useState<CardData[]>([]);
   const [aiMode, setAiMode] = useState<'OWNED' | 'UNLIMITED'>('OWNED');
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Delete Deck Long Press State
+  const [deckToDelete, setDeckToDelete] = useState<Deck | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = useRef(false);
 
   const activeDeck = decks.find(d => d.id === activeDeckId);
 
@@ -216,6 +221,42 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
   // Helper validation
   const isDeckValid = (count: number) => count >= 40 && count <= 60;
 
+  // --- Long Press Logic for Decks ---
+  const handleTouchStart = (deck: Deck) => {
+    isLongPressRef.current = false;
+    longPressTimer.current = setTimeout(() => {
+        isLongPressRef.current = true;
+        setDeckToDelete(deck);
+    }, 600); 
+  };
+
+  const handleTouchMove = () => {
+    // If user scrolls, cancel the long press
+    if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimer.current) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+    }
+  };
+
+  const handleDeckClick = (id: string) => {
+      if (isLongPressRef.current) return;
+      setActiveDeckId(id);
+  };
+
+  const handleConfirmDeleteDeck = () => {
+      if (deckToDelete) {
+          onDeleteDeck(deckToDelete.id);
+          setDeckToDelete(null);
+      }
+  };
+
   // --- View: List of Decks ---
   if (!activeDeckId) {
     if (showAiWizard) {
@@ -224,6 +265,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
 
         return (
             <div className="flex flex-col h-full bg-m3-background p-4 animate-in slide-in-from-right">
+                {/* ... AI Wizard JSX (no changes) ... */}
                 <div className="flex items-center gap-4 mb-4 shrink-0">
                     <button onClick={() => setShowAiWizard(false)} className="p-2"><ArrowLeft /></button>
                     <h2 className="text-2xl font-bold text-m3-onSurface">{t.ai_wizard_title}</h2>
@@ -323,7 +365,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
     }
 
     return (
-      <div className="flex flex-col h-full bg-m3-background p-4">
+      <div className="flex flex-col h-full bg-m3-background p-4 relative">
         <div className="flex justify-between items-center mb-6 mt-4 shrink-0">
           <h2 className="text-3xl font-normal text-m3-onSurface">{t.nav_decks}</h2>
           <div className="flex gap-2">
@@ -362,7 +404,7 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto pb-20 min-h-0">
+        <div className="flex-1 overflow-y-auto pb-20 min-h-0 select-none">
             <div className="grid grid-cols-2 gap-4">
                 {decks.length === 0 && !isCreating && (
                     <div className="col-span-2 text-center text-m3-onSurfaceVariant mt-20 flex flex-col items-center opacity-50">
@@ -378,7 +420,12 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                     return (
                         <div 
                         key={deck.id} 
-                        onClick={() => setActiveDeckId(deck.id)}
+                        onTouchStart={() => handleTouchStart(deck)}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        onMouseDown={() => handleTouchStart(deck)}
+                        onMouseUp={handleTouchEnd}
+                        onClick={() => handleDeckClick(deck.id)}
                         className="bg-m3-surfaceContainerLow rounded-xl overflow-hidden cursor-pointer group active:scale-95 transition-all shadow-md relative aspect-[3/4] flex flex-col border border-m3-outline/5 hover:border-m3-primary/30"
                         >
                         <div className="flex-1 bg-gradient-to-br from-m3-surfaceContainerHigh to-m3-surfaceContainer relative">
@@ -386,13 +433,24 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                                     const firstCard = allCards.find(c => c.id === deck.cards[0]);
                                     return firstCard?.imageUrl ? (
                                         <>
-                                            <img src={firstCard.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                            <img src={firstCard.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
                                         </>
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center opacity-20"><Box size={48} /></div>
                                     );
                             })()}
+                            
+                            {/* Explicit Delete Button (To ensure functionality) */}
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeckToDelete(deck);
+                                }}
+                                className="absolute top-2 left-2 p-1.5 bg-black/40 hover:bg-red-600/80 text-white rounded-full backdrop-blur-md transition-colors z-20"
+                            >
+                                <Trash size={14} />
+                            </button>
                             
                             <div className={`absolute top-2 right-2 text-white text-[10px] px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1 font-bold ${valid ? 'bg-green-600/80' : 'bg-red-600/80'}`}>
                                 {valid ? <Check size={10} /> : <ShieldAlert size={10} />}
@@ -407,19 +465,40 @@ export const DeckBuilder: React.FC<DeckBuilderProps> = ({
                                 <span className="bg-yugi-spell/20 text-yugi-spell px-1 rounded">S:{stats.spells}</span>
                                 <span className="bg-yugi-trap/20 text-yugi-trap px-1 rounded">T:{stats.traps}</span>
                             </div>
-                            
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onDeleteDeck(deck.id); }}
-                                className="absolute bottom-2 right-2 text-m3-onSurfaceVariant/50 hover:text-m3-error transition-colors p-1"
-                            >
-                                <Trash size={14} />
-                            </button>
                         </div>
                         </div>
                     );
                 })}
             </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {deckToDelete && (
+           <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+               <div className="bg-m3-surfaceContainer w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 border border-m3-error/20">
+                    <h3 className="text-xl font-bold text-m3-onSurface mb-2">Delete Deck</h3>
+                    <p className="text-m3-onSurfaceVariant text-sm mb-6">
+                        Are you sure you want to delete <span className="font-bold text-m3-onSurface">{deckToDelete.name}</span>? This cannot be undone.
+                    </p>
+
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => setDeckToDelete(null)}
+                            className="flex-1 py-3 font-medium text-m3-onSurfaceVariant hover:bg-m3-surfaceContainerHigh rounded-xl"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={handleConfirmDeleteDeck}
+                            className="flex-1 py-3 font-bold bg-m3-error text-m3-onError rounded-xl shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <Trash size={18} /> Delete
+                        </button>
+                    </div>
+               </div>
+           </div>
+        )}
+
       </div>
     );
   }

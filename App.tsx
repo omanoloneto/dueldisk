@@ -11,6 +11,9 @@ import { storageService } from './services/storageService';
 
 export default function App() {
   const [view, setView] = useState<AppView>(AppView.DUEL);
+  // Keep track of previous view to return from details
+  const [previousView, setPreviousView] = useState<AppView>(AppView.COLLECTION);
+  
   const [lang, setLang] = useState<Language>('pt');
   const [theme, setTheme] = useState<Theme>('dark');
   const [cards, setCards] = useState<CardData[]>([]);
@@ -68,13 +71,14 @@ export default function App() {
     try {
       // Check if duplicate exists
       const existingCardIndex = cards.findIndex(c => c.name.toLowerCase() === card.name.toLowerCase() && c.isOwned === true);
+      const qtyToAdd = card.quantity && card.quantity > 0 ? card.quantity : 1;
 
       if (existingCardIndex >= 0) {
           // Increment quantity
           const existingCard = cards[existingCardIndex];
           const updatedCard = { 
               ...existingCard, 
-              quantity: (existingCard.quantity || 1) + 1,
+              quantity: (existingCard.quantity || 1) + qtyToAdd,
               // Update image if the new scan is better? For now keep old image to avoid jump
           };
           
@@ -83,42 +87,58 @@ export default function App() {
           const newCards = [...cards];
           newCards[existingCardIndex] = updatedCard;
           setCards(newCards);
-          showNotification(`${updatedCard.name} (+1) saved!`);
+          showNotification(`${updatedCard.name} (+${qtyToAdd}) saved!`);
       } else {
           // Create new
-          const newCard = { ...card, quantity: 1 };
+          const newCard = { ...card, quantity: qtyToAdd };
           await storageService.saveCard(newCard);
           setCards(prev => [newCard, ...prev]);
-          showNotification(`${newCard.name} saved!`);
+          showNotification(`${newCard.name} (x${qtyToAdd}) saved!`);
       }
     } catch (e) {
       showNotification("Erro ao salvar carta.");
     }
   };
 
-  const handleDeleteCard = async (id: string) => {
-    if (confirm(translations[lang].confirm_delete_card)) {
+  const handleDeleteCard = async (id: string, qtyToDelete: number = 1) => {
       try {
-        await storageService.deleteCard(id);
-        setCards(prev => prev.filter(c => c.id !== id));
-        
-        // Update decks that might contain this card
-        const updatedDecks = decks.map(d => ({
-          ...d,
-          cards: d.cards.filter(cId => cId !== id),
-          extraDeck: d.extraDeck?.filter(cId => cId !== id),
-          sideDeck: d.sideDeck?.filter(cId => cId !== id)
-        }));
-        setDecks(updatedDecks);
-        
-        // Save updated decks
-        updatedDecks.forEach(d => storageService.saveDeck(d));
+        const card = cards.find(c => c.id === id);
+        if (!card) return;
 
-        if (selectedCard?.id === id) setSelectedCard(null);
+        const currentQty = card.quantity || 1;
+
+        if (currentQty > qtyToDelete) {
+            // Decrement
+            const updatedCard = { ...card, quantity: currentQty - qtyToDelete };
+            await storageService.saveCard(updatedCard);
+            setCards(prev => prev.map(c => c.id === id ? updatedCard : c));
+            showNotification(`Removido ${qtyToDelete} unidade(s).`);
+        } else {
+            // Full Delete
+            await storageService.deleteCard(id);
+            setCards(prev => prev.filter(c => c.id !== id));
+            
+            // Update decks that might contain this card
+            const updatedDecks = decks.map(d => ({
+            ...d,
+            cards: d.cards.filter(cId => cId !== id),
+            extraDeck: d.extraDeck?.filter(cId => cId !== id),
+            sideDeck: d.sideDeck?.filter(cId => cId !== id)
+            }));
+            setDecks(updatedDecks);
+            
+            // Save updated decks
+            updatedDecks.forEach(d => storageService.saveDeck(d));
+            showNotification("Carta excluída.");
+        }
+
+        if (selectedCard?.id === id) {
+            setSelectedCard(null);
+            setView(previousView);
+        }
       } catch (e) {
         showNotification("Erro ao apagar carta.");
       }
-    }
   };
 
   const handleCreateDeck = async (name: string, mainCards: CardData[] = [], extraCards: CardData[] = [], sideCards: CardData[] = [], notes: string = '') => {
@@ -185,6 +205,20 @@ export default function App() {
     }
   };
 
+  const openCardDetails = (card: CardData) => {
+      setSelectedCard(card);
+      // Only set previous view if we aren't already in details (to avoid loops)
+      if (view !== AppView.CARD_DETAILS) {
+          setPreviousView(view);
+      }
+      setView(AppView.CARD_DETAILS);
+  };
+
+  const closeCardDetails = () => {
+      setSelectedCard(null);
+      setView(previousView);
+  };
+
   // M3 Bottom Navigation Item
   const NavItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (
     <button 
@@ -221,7 +255,7 @@ export default function App() {
           <Collection 
             cards={cards} 
             onDeleteCard={handleDeleteCard} 
-            onSelectCard={setSelectedCard}
+            onSelectCard={openCardDetails}
             onAddCard={handleAddCard}
             lang={lang}
           />
@@ -235,7 +269,7 @@ export default function App() {
             onUpdateDeck={handleUpdateDeck}
             onDeleteDeck={handleDeleteDeck}
             onChangeView={setView}
-            onViewCard={setSelectedCard}
+            onViewCard={openCardDetails}
             lang={lang}
           />
         )}
@@ -249,51 +283,53 @@ export default function App() {
           />
         )}
 
-        {/* Card Details Modal */}
-        {selectedCard && (
+        {/* Full Screen Card Details */}
+        {view === AppView.CARD_DETAILS && selectedCard && (
           <CardDetails 
             card={selectedCard} 
-            onClose={() => setSelectedCard(null)} 
+            onClose={closeCardDetails} 
           />
         )}
 
         {/* Notification Toast */}
         {notification && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-m3-onSurface text-m3-surfaceContainer px-6 py-3 rounded-xl shadow-xl z-50 animate-bounce font-medium text-sm whitespace-nowrap">
+          <div className="absolute bottom-24 left-4 bg-m3-onSurface text-m3-surfaceContainer px-6 py-3 rounded-xl shadow-xl z-50 animate-bounce font-medium text-sm whitespace-nowrap">
             {notification}
           </div>
         )}
       </main>
 
-      {/* Material 3 Bottom Navigation */}
-      <nav className="bg-m3-surfaceContainer border-t border-m3-outline/10 safe-pb shrink-0 z-50">
-        <div className="flex justify-around items-center h-[72px]">
-          <NavItem 
-            icon={Swords} 
-            label={translations[lang].nav_duel} 
-            active={view === AppView.DUEL} 
-            onClick={() => setView(AppView.DUEL)} 
-          />
-          <NavItem 
-            icon={Library} 
-            label={translations[lang].nav_collection} 
-            active={view === AppView.COLLECTION} 
-            onClick={() => setView(AppView.COLLECTION)} 
-          />
-          <NavItem 
-            icon={Layers} 
-            label={translations[lang].nav_decks} 
-            active={view === AppView.DECKS} 
-            onClick={() => setView(AppView.DECKS)} 
-          />
-          <NavItem 
-            icon={SettingsIcon} 
-            label={translations[lang].nav_settings} 
-            active={view === AppView.SETTINGS} 
-            onClick={() => setView(AppView.SETTINGS)} 
-          />
-        </div>
-      </nav>
+      {/* Material 3 Bottom Navigation - Hide on Full Screen Details */}
+      {view !== AppView.CARD_DETAILS && (
+        <nav className="bg-m3-surfaceContainer border-t border-m3-outline/10 safe-pb shrink-0 z-50">
+            <div className="flex justify-around items-center h-[72px]">
+            <NavItem 
+                icon={Swords} 
+                label={translations[lang].nav_duel} 
+                active={view === AppView.DUEL} 
+                onClick={() => setView(AppView.DUEL)} 
+            />
+            <NavItem 
+                icon={Library} 
+                label={translations[lang].nav_collection} 
+                active={view === AppView.COLLECTION} 
+                onClick={() => setView(AppView.COLLECTION)} 
+            />
+            <NavItem 
+                icon={Layers} 
+                label={translations[lang].nav_decks} 
+                active={view === AppView.DECKS} 
+                onClick={() => setView(AppView.DECKS)} 
+            />
+            <NavItem 
+                icon={SettingsIcon} 
+                label={translations[lang].nav_settings} 
+                active={view === AppView.SETTINGS} 
+                onClick={() => setView(AppView.SETTINGS)} 
+            />
+            </div>
+        </nav>
+      )}
     </div>
   );
 }

@@ -35,7 +35,8 @@ export enum AppView {
   DUEL = 'duel',
   COLLECTION = 'collection',
   DECKS = 'decks',
-  SETTINGS = 'settings'
+  SETTINGS = 'settings',
+  CARD_DETAILS = 'card_details'
 }
 
 export type Language = 'pt' | 'en' | 'es' | 'ja' | 'de' | 'fr' | 'it' | 'ko';
