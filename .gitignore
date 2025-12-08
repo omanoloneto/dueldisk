@@ -7,18 +7,47 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Dependency directories
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Local / environment config
 *.local
+.env
+.env.*.local
+.env.local
+
+# PWA / tooling caches
+.cache/
+.tmp/
+.eslintcache
+
+# OS-specific
+.DS_Store
+Thumbs.db
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# TypeScript
+*.tsbuildinfo
+
+# Tests / coverage
+coverage/
+
+# Capacitor / Android (native project)
+android/
+
+# Misc
+npm-debug.log*
+yarn.lock.tmp
